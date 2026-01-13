@@ -1,0 +1,16 @@
+{
+  "name": "convert-excel-to-json",
+  "version": "1.0.0",
+  "description": "Convert Excel with 4-level structure to JSON",
+  "main": "convert.js",
+  "scripts": {
+    "convert": "node convert.js"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "docx": "^9.5.1",
+    "mammoth": "^1.11.0",
+    "officeparser": "^6.0.1",
+    "xlsx": "^0.18.5"
+  }
+}
