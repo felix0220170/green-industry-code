@@ -64,6 +64,27 @@
             color: #333;
         }
         
+        /* 链接样式 */
+        a {
+            color: #2196F3;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        /* 相关资料列表样式 */
+        .related-docs-list {
+            list-style-type: disc;
+            padding-left: 20px;
+            margin: 5px 0;
+        }
+        
+        .related-docs-list li {
+            margin: 3px 0;
+        }
+        
         /* 向导步骤样式 */
         .wizard-steps {
             display: flex;
@@ -565,7 +586,7 @@
         </div>
     </div>
     <script src="data/code_data.js"></script>
-    <script src="data/project_data.js"></script>
+    <script src="data/project_data_with_doc.js"></script>
     <script>        
         // 行业代码目录的json data
         let jsonData = industry_code_data;
@@ -930,7 +951,8 @@
                                 C: item.C,
                                 D: item.D,
                                 E: item.E,
-                                F: item.F
+                                F: item.F,
+                                G: item.G
                             });
                         } else if (item.E) {
                             // 检查E字段是否包含行业代码
@@ -942,7 +964,8 @@
                                     C: item.C,
                                     D: item.D,
                                     E: item.E,
-                                    F: item.F
+                                    F: item.F,
+                                    G: item.G
                                 });
                             }
                         }
@@ -988,6 +1011,7 @@
                                     <th>条件/标准</th>
                                     <th>备注</th>
                                     <th>温室气体减排贡献</th>
+                                    <th>相关资料</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1001,6 +1025,16 @@
                     if (industryCodeDisplay && industryCodeDisplay === currentIndustryCode) {
                         industryCodeDisplay = `<span class="highlight">${industryCodeDisplay}</span>`;
                     }
+                    // 处理相关资料
+                    let relatedDocsHTML = "";
+                    if (item.G && Array.isArray(item.G) && item.G.length > 0) {
+                        relatedDocsHTML = `<ul class="related-docs-list">${item.G.map(doc => {
+                            if (doc.filename) {
+                                return `<li><a href="#" onclick="alert('从OSS下载文件: ${doc.filename}'); return false;">${doc.filename}</a></li>`;
+                            }
+                            return "";
+                        }).join('')}</ul>`;
+                    }
                     tableHTML += `
                         <tr>
                             <td><input type="radio" name="category-select" class="select-checkbox" value="${i}" onchange="selectCategory(${i})"></td>
@@ -1011,6 +1045,7 @@
                             <td>${formatText(item.D)}</td>
                             <td>${formatText(item.E)}</td>
                             <td><span class="ghg-contribution ${getGHGClass(item.F)}">${getGHGText(item.F)}</span></td>
+                            <td>${relatedDocsHTML}</td>
                         </tr>
                     `;
                 }
@@ -1075,6 +1110,17 @@
                 if (industryCodeDisplay && industryCodeDisplay === currentIndustryCode) {
                     industryCodeDisplay = `<span class="highlight">${industryCodeDisplay}</span>`;
                 }
+                // 处理相关资料
+                let relatedDocsHTML = "";
+                if (selectedCategory.G && Array.isArray(selectedCategory.G) && selectedCategory.G.length > 0) {
+                    relatedDocsHTML = `<ul class="related-docs-list">${selectedCategory.G.map(doc => {
+                        if (doc.filename) {
+                            return `<li><a href="#" onclick="alert('从OSS下载文件: ${doc.filename}'); return false;">${doc.filename}</a></li>`;
+                        }
+                        return "";
+                    }).join('')}</ul>`;
+                }
+                
                 infoDiv.innerHTML = `
                     <h3>您选择的项目类别</h3>
                     <div class="result">
@@ -1085,6 +1131,7 @@
                         <p><strong>条件/标准：</strong>${formatText(selectedCategory.D)}</p>
                         <p><strong>备注：</strong>${formatText(selectedCategory.E)}</p>
                         <p><strong>温室气体减排贡献：</strong><span class="ghg-contribution ${getGHGClass(selectedCategory.F)}">${getGHGText(selectedCategory.F)}</span></p>
+                        <p><strong>相关资料：</strong>${relatedDocsHTML || "无"}</p>
                     </div>
                 `;
             } else {
