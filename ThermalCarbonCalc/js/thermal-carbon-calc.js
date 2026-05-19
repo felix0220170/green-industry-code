@@ -7389,174 +7389,6 @@ function calculate(mediumType, weight, temp, pressure) {
     }
 }
 
-function updateInputVisibility() {
-    const mediumType = document.getElementById('mediumType').value;
-    const temperatureGroup = document.getElementById('temperatureGroup');
-    const pressureGroup = document.getElementById('pressureGroup');
-
-    temperatureGroup.style.display = 'block';
-    pressureGroup.style.display = 'block';
-
-    if (mediumType === 'hot_water') {
-        pressureGroup.style.display = 'none';
-    } else if (mediumType === 'saturated_steam') {
-        temperatureGroup.style.display = 'none';
-    }
-}
-
-function validateInputs() {
-    const mediumType = document.getElementById('mediumType').value;
-    const weight = parseFloat(document.getElementById('weight').value);
-    const temp = parseFloat(document.getElementById('temperature').value);
-    const pressure = parseFloat(document.getElementById('pressure').value);
-
-    if (isNaN(weight) || weight <= 0) {
-        return { valid: false, message: '请输入有效的重量（大于0）' };
-    }
-
-    if (mediumType === 'hot_water') {
-        if (isNaN(temp) || temp < 0 || temp > 373) {
-            return { valid: false, message: '请输入有效的温度（0~373°C）' };
-        }
-    } else if (mediumType === 'saturated_steam') {
-        if (isNaN(pressure) || pressure < 0.0006 || pressure > 22.064) {
-            return { valid: false, message: '请输入有效的压力（0.0006~22.064 MPa）' };
-        }
-    } else if (mediumType === 'superheated_steam') {
-        if (isNaN(pressure) || pressure < 0.1 || pressure > 22) {
-            return { valid: false, message: '请输入有效的压力（0.1~22 MPa）' };
-        }
-        if (isNaN(temp) || temp < 0 || temp > 800) {
-            return { valid: false, message: '请输入有效的温度（0~800°C）' };
-        }
-    }
-
-    return { valid: true, message: '' };
-}
-
-function showError(message) {
-    const errorDiv = document.getElementById('errorMessage');
-    errorDiv.textContent = message;
-    errorDiv.style.display = 'block';
-    document.getElementById('resultSection').style.display = 'none';
-}
-
-function hideError() {
-    document.getElementById('errorMessage').style.display = 'none';
-}
-
-function showResult(result) {
-    hideError();
-    document.getElementById('resultSection').style.display = 'block';
-    document.getElementById('heatAmount').textContent = result.value.toFixed(2);
-    document.getElementById('refEnthalpyValue').textContent = refEnthalpy.toFixed(1);
-    
-    const calculationProcess = document.getElementById('calculationProcess');
-    const processContent = document.getElementById('processContent');
-    
-    if (result.details) {
-        processContent.innerHTML = result.details;
-        calculationProcess.style.display = 'block';
-    } else {
-        calculationProcess.style.display = 'none';
-    }
-}
-
-function performCalculation() {
-    try {
-        if (!dataLoaded) {
-            showError('数据加载中，请稍候...');
-            return;
-        }
-
-        const mediumType = document.getElementById('mediumType').value;
-        const weight = parseFloat(document.getElementById('weight').value);
-        const temp = parseFloat(document.getElementById('temperature').value);
-        const pressure = parseFloat(document.getElementById('pressure').value);
-
-        const validation = validateInputs();
-        if (!validation.valid) {
-            showError(validation.message);
-            document.getElementById('calculationProcess').style.display = 'none';
-            return;
-        }
-
-        const result = calculate(mediumType, weight, temp, pressure);
-
-        if (result === null) {
-            const mediumTypeText = {
-                'hot_water': '热水',
-                'saturated_steam': '饱和蒸汽',
-                'superheated_steam': '过热蒸汽'
-            }[mediumType];
-
-            if (mediumType === 'superheated_steam') {
-                showError('该压力温度组合不存在于过热蒸汽区（温度必须大于等于当前压力下的饱和温度）');
-            } else {
-                showError(mediumTypeText + '计算失败，请检查输入参数');
-            }
-            document.getElementById('calculationProcess').style.display = 'none';
-            return;
-        }
-
-        showResult(result);
-
-    } catch (e) {
-        console.error('计算过程错误:', e);
-        showError('计算过程发生错误，请检查输入参数');
-        document.getElementById('calculationProcess').style.display = 'none';
-    }
-}
-
-function resetCalculator() {
-    document.getElementById('mediumType').value = 'hot_water';
-    document.getElementById('weight').value = '';
-    document.getElementById('temperature').value = '';
-    document.getElementById('pressure').value = '';
-    document.getElementById('resultSection').style.display = 'none';
-    document.getElementById('calculationProcess').style.display = 'none';
-    hideError();
-    updateInputVisibility();
-}
-
-function fillExample(type) {
-    document.getElementById('mediumType').value = type;
-    updateInputVisibility();
-
-    switch (type) {
-        case 'hot_water':
-            document.getElementById('weight').value = '10';
-            document.getElementById('temperature').value = '90';
-            break;
-        case 'saturated_steam':
-            document.getElementById('weight').value = '5';
-            document.getElementById('pressure').value = '0.5';
-            break;
-        case 'superheated_steam':
-            document.getElementById('weight').value = '5';
-            document.getElementById('pressure').value = '0.5';
-            document.getElementById('temperature').value = '300';
-            break;
-    }
-
-    performCalculation();
-}
-
-function copyResult() {
-    const result = document.getElementById('heatAmount').textContent;
-    if (result === '-') return;
-
-    navigator.clipboard.writeText(result).then(() => {
-        const hint = document.getElementById('copyHint');
-        hint.classList.add('show');
-        setTimeout(() => {
-            hint.classList.remove('show');
-        }, 2000);
-    }).catch(err => {
-        console.error('复制失败:', err);
-    });
-}
-
 function renderWenshangTable() {
     const tbody = document.getElementById('wenshangTableBody');
     let html = '';
@@ -7639,10 +7471,7 @@ document.addEventListener('DOMContentLoaded', function() {
         refEnthalpy = getSaturatedWaterEnthalpy(REF_TEMP);
         
         document.getElementById('loadingOverlay').style.display = 'none';
-        document.getElementById('calculateBtn').disabled = false;
-        document.getElementById('refEnthalpyValue').textContent = refEnthalpy.toFixed(1);
 
-        updateInputVisibility();
         renderWenshangTable();
         renderSteamTableSummary();
 
@@ -7651,15 +7480,203 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('loadingOverlay').innerHTML = '<div class="loading-content"><span>数据加载失败，请刷新页面重试</span></div>';
     });
 
-    document.getElementById('mediumType').addEventListener('change', updateInputVisibility);
-    document.getElementById('calculateBtn').addEventListener('click', performCalculation);
-    document.getElementById('resetBtn').addEventListener('click', resetCalculator);
-    document.getElementById('copyBtn').addEventListener('click', copyResult);
     document.getElementById('downloadBtn').addEventListener('click', downloadSteamTable);
 
-    document.querySelectorAll('.example-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            fillExample(this.dataset.type);
+    let batchItems = [];
+
+    function updateBatchInputVisibility() {
+        const mediumType = document.getElementById('batchMediumType').value;
+        const temperatureGroup = document.getElementById('batchTemperatureGroup');
+        const pressureGroup = document.getElementById('batchPressureGroup');
+        const temperatureInput = document.getElementById('batchTemperature');
+        const pressureInput = document.getElementById('batchPressure');
+
+        temperatureGroup.style.display = 'block';
+        pressureGroup.style.display = 'block';
+
+        if (mediumType === 'hot_water') {
+            pressureGroup.style.display = 'none';
+            temperatureInput.placeholder = '0~373';
+        } else if (mediumType === 'saturated_steam') {
+            temperatureGroup.style.display = 'none';
+            pressureInput.placeholder = '0.0006~22.064';
+        } else if (mediumType === 'superheated_steam') {
+            temperatureInput.placeholder = '0~800';
+            pressureInput.placeholder = '0.001~100';
+        }
+    }
+
+    function validateBatchInputs() {
+        const mediumType = document.getElementById('batchMediumType').value;
+        const weight = parseFloat(document.getElementById('batchWeight').value);
+        const temp = parseFloat(document.getElementById('batchTemperature').value);
+        const pressure = parseFloat(document.getElementById('batchPressure').value);
+
+        if (isNaN(weight) || weight <= 0) {
+            return { valid: false, message: '请输入有效的重量（大于0）' };
+        }
+
+        if (mediumType === 'hot_water') {
+            if (isNaN(temp) || temp < 0 || temp > 373) {
+                return { valid: false, message: '请输入有效的温度（0~373°C）' };
+            }
+        } else if (mediumType === 'saturated_steam') {
+            if (isNaN(pressure) || pressure < 0.0006 || pressure > 22.064) {
+                return { valid: false, message: '请输入有效的压力（0.0006~22.064 MPa）' };
+            }
+        } else if (mediumType === 'superheated_steam') {
+            if (isNaN(pressure) || pressure < 0.001 || pressure > 100) {
+                return { valid: false, message: '请输入有效的压力（0.001~100 MPa）' };
+            }
+            if (isNaN(temp) || temp < 0 || temp > 800) {
+                return { valid: false, message: '请输入有效的温度（0~800°C）' };
+            }
+        }
+
+        return { valid: true, message: '' };
+    }
+
+    function getMediumTypeName(type) {
+        const names = {
+            'hot_water': '热水',
+            'saturated_steam': '饱和蒸汽',
+            'superheated_steam': '过热蒸汽'
+        };
+        return names[type] || type;
+    }
+
+    function renderBatchTable() {
+        const tbody = document.getElementById('batchTableBody');
+        let html = '';
+
+        batchItems.forEach((item, index) => {
+            html += `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${getMediumTypeName(item.type)}</td>
+                    <td>${item.weight.toFixed(2)}</td>
+                    <td>${item.temp !== null ? item.temp.toFixed(2) : '-'}</td>
+                    <td>${item.pressure !== null ? item.pressure.toFixed(3) : '-'}</td>
+                    <td>${item.gj.toFixed(2)}</td>
+                    <td>
+                        <button class="action-btn view-btn" data-index="${index}">计算过程展示</button>
+                        <button class="action-btn delete-btn" data-index="${index}">删除</button>
+                    </td>
+                </tr>
+            `;
         });
+
+        tbody.innerHTML = html;
+
+        const totalGJ = batchItems.reduce((sum, item) => sum + item.gj, 0);
+        document.getElementById('totalGJ').textContent = totalGJ.toFixed(2);
+    }
+
+    function addBatchItem() {
+        if (!dataLoaded) {
+            alert('数据加载中，请稍候...');
+            return;
+        }
+
+        const mediumType = document.getElementById('batchMediumType').value;
+        const weight = parseFloat(document.getElementById('batchWeight').value);
+        const temp = parseFloat(document.getElementById('batchTemperature').value);
+        const pressure = parseFloat(document.getElementById('batchPressure').value);
+
+        const validation = validateBatchInputs();
+        if (!validation.valid) {
+            alert(validation.message);
+            return;
+        }
+
+        const result = calculate(mediumType, weight, temp, pressure);
+
+        if (result === null) {
+            const mediumTypeText = getMediumTypeName(mediumType);
+
+            if (mediumType === 'superheated_steam') {
+                alert('该压力温度组合不存在于过热蒸汽区（温度必须大于等于当前压力下的饱和温度）');
+            } else {
+                alert(mediumTypeText + '计算失败，请检查输入参数');
+            }
+            return;
+        }
+
+        batchItems.push({
+            type: mediumType,
+            weight: weight,
+            temp: mediumType === 'saturated_steam' ? null : temp,
+            pressure: mediumType === 'hot_water' ? null : pressure,
+            gj: result.value,
+            details: result.details
+        });
+
+        renderBatchTable();
+
+        document.getElementById('batchMediumType').value = 'hot_water';
+        document.getElementById('batchWeight').value = '';
+        document.getElementById('batchTemperature').value = '';
+        document.getElementById('batchPressure').value = '';
+        updateBatchInputVisibility();
+    }
+
+    function deleteBatchItem(index) {
+        batchItems.splice(index, 1);
+        renderBatchTable();
+    }
+
+    function clearAllItems() {
+        if (batchItems.length === 0) {
+            alert('当前没有条目可清空');
+            return;
+        }
+
+        if (confirm('确定要清空所有条目吗？')) {
+            batchItems = [];
+            renderBatchTable();
+        }
+    }
+
+    function showDetailModal(index) {
+        const item = batchItems[index];
+        const modal = document.getElementById('detailModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+
+        modalTitle.textContent = `计算过程详情 - 条目 ${index + 1}`;
+        modalBody.innerHTML = item.details;
+
+        modal.style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('detailModal').style.display = 'none';
+    }
+
+    document.getElementById('batchMediumType').addEventListener('change', updateBatchInputVisibility);
+    document.getElementById('addBatchBtn').addEventListener('click', addBatchItem);
+    document.getElementById('clearAllBtn').addEventListener('click', clearAllItems);
+
+    document.querySelector('.close-modal').addEventListener('click', closeModal);
+
+    document.getElementById('batchTableBody').addEventListener('click', function(event) {
+        const target = event.target;
+        const index = parseInt(target.dataset.index);
+        
+        if (target.classList.contains('view-btn')) {
+            showDetailModal(index);
+        } else if (target.classList.contains('delete-btn')) {
+            deleteBatchItem(index);
+        }
     });
+
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('detailModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+    updateBatchInputVisibility();
+    renderBatchTable();
 });

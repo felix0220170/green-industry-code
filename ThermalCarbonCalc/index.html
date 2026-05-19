@@ -10,45 +10,6 @@
     <div class="calculator-container">
         <h1 class="calculator-title">热力购入量计算器</h1>
 
-        <div class="input-section">
-            <div class="input-group">
-                <label for="mediumType">介质类型</label>
-                <select id="mediumType">
-                    <option value="hot_water">热水</option>
-                    <option value="saturated_steam">饱和蒸汽</option>
-                    <option value="superheated_steam">过热蒸汽</option>
-                </select>
-            </div>
-
-            <div class="input-group">
-                <label for="weight">重量<span class="unit">(吨)</span></label>
-                <input type="number" id="weight" placeholder="请输入重量" step="0.01" min="0">
-            </div>
-
-            <div class="input-row">
-                <div class="input-group" id="temperatureGroup">
-                    <label for="temperature">温度<span class="unit">(°C)</span></label>
-                    <input type="number" id="temperature" placeholder="0~373" step="0.1">
-                </div>
-
-                <div class="input-group" id="pressureGroup">
-                    <label for="pressure">压力<span class="unit">(MPa)</span></label>
-                    <input type="number" id="pressure" placeholder="0.0006~22.064" step="0.01" min="0">
-                </div>
-            </div>
-        </div>
-
-        <div class="example-buttons">
-            <button class="example-btn" data-type="hot_water">热水示例</button>
-            <button class="example-btn" data-type="saturated_steam">饱和蒸汽示例</button>
-            <button class="example-btn" data-type="superheated_steam">过热蒸汽示例</button>
-        </div>
-
-        <div class="button-row">
-            <button class="calculate-btn" id="calculateBtn" disabled>计算热力购入量 (GJ)</button>
-            <button class="reset-btn" id="resetBtn">清空</button>
-        </div>
-
         <div class="loading-overlay" id="loadingOverlay">
             <div class="loading-content">
                 <div class="spinner"></div>
@@ -56,32 +17,65 @@
             </div>
         </div>
 
-        <div class="result-section" id="resultSection" style="display: none;">
-            <h3>计算结果</h3>
-            <div class="result-item highlight">
-                <span class="label">热力购入量</span>
-                <span class="value" id="heatAmount">-</span>
-                <span class="unit">GJ</span>
-                <button class="copy-btn" id="copyBtn" title="复制结果">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
-                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
-                    </svg>
-                </button>
-                <span class="copy-hint" id="copyHint">已复制</span>
+        <div class="batch-section">
+            <h2>批次管理（多介质汇总）</h2>
+            <div class="batch-form">
+                <div class="input-group">
+                    <label for="batchMediumType">介质类型</label>
+                    <select id="batchMediumType">
+                        <option value="hot_water">热水</option>
+                        <option value="saturated_steam">饱和蒸汽</option>
+                        <option value="superheated_steam">过热蒸汽</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="batchWeight">重量<span class="unit">(吨)</span></label>
+                    <input type="number" id="batchWeight" placeholder="请输入重量" step="0.01" min="0">
+                </div>
+
+                <div class="input-row">
+                    <div class="input-group" id="batchTemperatureGroup">
+                        <label for="batchTemperature">温度<span class="unit">(°C)</span></label>
+                        <input type="number" id="batchTemperature" placeholder="0~373" step="0.1">
+                    </div>
+
+                    <div class="input-group" id="batchPressureGroup">
+                        <label for="batchPressure">压力<span class="unit">(MPa)</span></label>
+                        <input type="number" id="batchPressure" placeholder="0.0006~22.064" step="0.01" min="0">
+                    </div>
+                </div>
+
+                <button class="calculate-btn" id="addBatchBtn">添加条目</button>
             </div>
 
-            <div class="calculation-basis" id="calculationBasis">
-                <p><strong>计算依据：</strong></p>
-                <p id="basisText">基准温度 20°C（饱和水焓 <span id="refEnthalpyValue">-</span> kJ/kg）</p>
+            <div class="batch-table-wrapper">
+                <table class="batch-table">
+                    <thead>
+                        <tr>
+                            <th>序号</th>
+                            <th>介质类型</th>
+                            <th>重量(吨)</th>
+                            <th>温度(°C)</th>
+                            <th>压力(MPa)</th>
+                            <th>GJ</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batchTableBody"></tbody>
+                </table>
             </div>
+
+            <div class="batch-total">总热力购入量：<span id="totalGJ">0.00</span> GJ</div>
+            <button id="clearAllBtn" class="clear-all-btn">清空所有条目</button>
         </div>
 
-        <div class="error-message" id="errorMessage" style="display: none;"></div>
-
-        <div class="calculation-process" id="calculationProcess" style="display: none;">
-            <h3>计算过程</h3>
-            <div id="processContent" class="process-content"></div>
+        <div id="detailModal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h3 id="modalTitle">计算过程详情</h3>
+                <div id="modalBody" class="modal-body"></div>
+            </div>
         </div>
 
         <details class="info-section" id="infoSection">
@@ -120,7 +114,7 @@
                         <li><strong>选择介质类型</strong>：根据实际介质选择热水、饱和蒸汽或过热蒸汽。</li>
                         <li><strong>输入字段</strong>：重量为必填项；热水需输入温度；饱和蒸汽需输入压力；过热蒸汽需同时输入压力和温度。</li>
                         <li><strong>输入限制</strong>：温度 0~373°C，压力 0.0006~22.064 MPa，过热蒸汽温度不得低于对应压力的饱和温度。</li>
-                        <li><strong>计算结果</strong>：点击"计算"获得 GJ 结果，可一键复制。</li>
+                        <li><strong>添加条目</strong>：点击"添加条目"将计算结果添加到表格中，可多次添加不同介质。</li>
                     </ul>
                 </div>
 
