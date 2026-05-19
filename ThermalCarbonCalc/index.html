@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>热力购入量计算器</title>
+    <link rel="stylesheet" href="css/thermal-carbon-calc.css">
+</head>
+<body>
+    <div class="calculator-container">
+        <h1 class="calculator-title">热力购入量计算器</h1>
+
+        <div class="input-section">
+            <div class="input-group">
+                <label for="mediumType">介质类型</label>
+                <select id="mediumType">
+                    <option value="hot_water">热水</option>
+                    <option value="saturated_steam">饱和蒸汽</option>
+                    <option value="superheated_steam">过热蒸汽</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="weight">重量<span class="unit">(吨)</span></label>
+                <input type="number" id="weight" placeholder="请输入重量" step="0.01" min="0">
+            </div>
+
+            <div class="input-row">
+                <div class="input-group" id="temperatureGroup">
+                    <label for="temperature">温度<span class="unit">(°C)</span></label>
+                    <input type="number" id="temperature" placeholder="0~373" step="0.1">
+                </div>
+
+                <div class="input-group" id="pressureGroup">
+                    <label for="pressure">压力<span class="unit">(MPa)</span></label>
+                    <input type="number" id="pressure" placeholder="0.0006~22.064" step="0.01" min="0">
+                </div>
+            </div>
+        </div>
+
+        <div class="example-buttons">
+            <button class="example-btn" data-type="hot_water">热水示例</button>
+            <button class="example-btn" data-type="saturated_steam">饱和蒸汽示例</button>
+            <button class="example-btn" data-type="superheated_steam">过热蒸汽示例</button>
+        </div>
+
+        <div class="button-row">
+            <button class="calculate-btn" id="calculateBtn" disabled>计算热力购入量 (GJ)</button>
+            <button class="reset-btn" id="resetBtn">清空</button>
+        </div>
+
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <span>数据加载中...</span>
+            </div>
+        </div>
+
+        <div class="result-section" id="resultSection" style="display: none;">
+            <h3>计算结果</h3>
+            <div class="result-item highlight">
+                <span class="label">热力购入量</span>
+                <span class="value" id="heatAmount">-</span>
+                <span class="unit">GJ</span>
+                <button class="copy-btn" id="copyBtn" title="复制结果">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+                        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                    </svg>
+                </button>
+                <span class="copy-hint" id="copyHint">已复制</span>
+            </div>
+
+            <div class="calculation-basis" id="calculationBasis">
+                <p><strong>计算依据：</strong></p>
+                <p id="basisText">基准温度 20°C（饱和水焓 <span id="refEnthalpyValue">-</span> kJ/kg）</p>
+            </div>
+        </div>
+
+        <div class="error-message" id="errorMessage" style="display: none;"></div>
+
+        <div class="calculation-process" id="calculationProcess" style="display: none;">
+            <h3>计算过程</h3>
+            <div id="processContent" class="process-content"></div>
+        </div>
+
+        <details class="info-section" id="infoSection">
+            <summary class="info-header">
+                <span class="info-icon">ℹ️</span>
+                <span>计算逻辑与数据说明</span>
+                <span class="info-toggle">▼</span>
+            </summary>
+            <div class="info-content">
+                <div class="info-section-item">
+                    <h4>一、计算逻辑</h4>
+                    <p><strong>核心公式：</strong></p>
+                    <p class="formula">热力购入量 (GJ) = (当前状态焓值 − 基准焓值) × 重量(吨) × 1000 ÷ 1,000,000</p>
+                    <p><strong>基准状态：</strong>温度 20°C 的饱和水（常压），其焓值来自温熵表。</p>
+                    <p><strong>不同介质类型的查表方法：</strong></p>
+                    <ul>
+                        <li><strong>热水</strong>：直接根据温度从温熵表读取饱和水焓 h_liquid。</li>
+                        <li><strong>饱和蒸汽</strong>：根据压力从温熵表读取饱和蒸汽焓 h_vapor。</li>
+                        <li><strong>过热蒸汽</strong>：根据压力+温度从过热蒸汽表通过<strong>双线性插值</strong>得到焓值。</li>
+                    </ul>
+                    <p><strong>插值说明：</strong>由于用户输入可能不在数据网格点上，需要使用插值计算。线性插值用于单变量（温度或压力），双线性插值用于双变量（压力+温度），确保任意输入都能获得准确的焓值。</p>
+                </div>
+
+                <div class="info-section-item">
+                    <h4>二、数据来源</h4>
+                    <ul>
+                        <li><strong>温熵表</strong> (wenshang_table.json)：基于 IAPWS-IF97 国际标准生成，温度范围 0.01°C ~ 373°C（临界点以下），包含压力、饱和水焓、饱和蒸汽焓等。</li>
+                        <li><strong>过热蒸汽表</strong> (steam_table_easyquery_style.json)：基于同一标准生成，压力范围 0.001~100 MPa，温度范围 0~800°C，步长 10°C。</li>
+                        <li><strong>数据精度</strong>：焓值保留 1 位小数，压力保留 6 位小数。</li>
+                    </ul>
+                </div>
+
+                <div class="info-section-item">
+                    <h4>三、使用说明</h4>
+                    <ul>
+                        <li><strong>选择介质类型</strong>：根据实际介质选择热水、饱和蒸汽或过热蒸汽。</li>
+                        <li><strong>输入字段</strong>：重量为必填项；热水需输入温度；饱和蒸汽需输入压力；过热蒸汽需同时输入压力和温度。</li>
+                        <li><strong>输入限制</strong>：温度 0~373°C，压力 0.0006~22.064 MPa，过热蒸汽温度不得低于对应压力的饱和温度。</li>
+                        <li><strong>计算结果</strong>：点击"计算"获得 GJ 结果，可一键复制。</li>
+                    </ul>
+                </div>
+
+                <div class="info-section-item">
+                    <h4>四、温熵表（饱和水/蒸汽性质）</h4>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>温度 (°C)</th>
+                                    <th>压力 (MPa)</th>
+                                    <th>饱和水焓 (kJ/kg)</th>
+                                    <th>饱和蒸汽焓 (kJ/kg)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wenshangTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="info-section-item">
+                    <h4>五、过热蒸汽表（压力-温度网格）</h4>
+                    <p>完整数据包含 <span id="steamDataCount">-</span> 个压力-温度组合，以下为摘要信息：</p>
+                    
+                    <div class="tags-container">
+                        <div class="tags-section">
+                            <h5>压力列表 (MPa)：</h5>
+                            <div class="tags" id="pressureTags"></div>
+                        </div>
+                        
+                        <div class="tags-section">
+                            <h5>温度列表 (°C)：</h5>
+                            <div class="tags" id="temperatureTags"></div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <h5>数据示例（前5×5网格）：</h5>
+                        <table class="data-table small">
+                            <thead>
+                                <tr id="steamTableHeader"></tr>
+                            </thead>
+                            <tbody id="steamTableBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="download-section">
+                        <button class="download-btn" id="downloadBtn">下载完整过热蒸汽表 JSON</button>
+                    </div>
+
+                    <p><strong>说明</strong>：实际计算时通过双线性插值获得任意压力温度组合的焓值。</p>
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <script src="js/thermal-carbon-calc.js"></script>
+</body>
+</html>
