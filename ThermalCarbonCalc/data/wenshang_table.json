@@ -5,10 +5,10 @@
     "pressure_unit": "MPa",
     "enthalpy_unit": "kJ/kg",
     "entropy_unit": "kJ/(kg\u00b7K)",
-    "range": "0.01\u00b0C \u5230 373\u00b0C\uff08\u4e34\u754c\u70b9\u4ee5\u4e0b\uff09",
+    "range": "0.01\u00b0C \u5230 374\u00b0C\uff08\u542b\u4e34\u754c\u70b9\uff09",
     "critical_temperature": 374.0,
     "critical_pressure": 22.064,
-    "note": "\u4e34\u754c\u70b9\uff08374\u00b0C\uff09\u5904\u9971\u548c\u6c34\u548c\u9971\u548c\u84b8\u6c7d\u65e0\u533a\u522b\uff0c\u8868\u4e2d\u672a\u5305\u542b"
+    "note": "\u4e34\u754c\u70b9\uff08374\u00b0C\uff09\u5904\u9971\u548c\u6c34\u548c\u9971\u548c\u84b8\u6c7d\u65e0\u533a\u522b\uff0c\u8868\u4e2d\u5df2\u5305\u542b\u4e34\u754c\u70b9\u6761\u76ee"
   },
   "table": [
     {
@@ -3376,6 +3376,15 @@
       "s_liquid": 4.238,
       "s_vapor": 4.6293,
       "latent_heat": 252.85
+    },
+    {
+      "temperature": 374,
+      "pressure": 22.064,
+      "h_liquid": 2087.6,
+      "h_vapor": 2087.6,
+      "s_liquid": 4.442,
+      "s_vapor": 4.442,
+      "latent_heat": 0
     }
   ]
 }

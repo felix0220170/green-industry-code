@@ -102,7 +102,7 @@
                 <div class="info-section-item">
                     <h4>二、数据来源</h4>
                     <ul>
-                        <li><strong>温熵表</strong> (wenshang_table.json)：基于 IAPWS-IF97 国际标准生成，温度范围 0.01°C ~ 373°C（临界点以下），包含压力、饱和水焓、饱和蒸汽焓等。</li>
+                        <li><strong>温熵表</strong> (wenshang_table.json)：基于 IAPWS-IF97 国际标准生成，温度范围 0.01°C ~ 374°C（含临界点），包含压力、饱和水焓、饱和蒸汽焓等。</li>
                         <li><strong>过热蒸汽表</strong> (steam_table_easyquery_style.json)：基于同一标准生成，压力范围 0.001~100 MPa，温度范围 0~800°C，步长 10°C。</li>
                         <li><strong>数据精度</strong>：焓值保留 1 位小数，压力保留 6 位小数。</li>
                     </ul>
@@ -113,7 +113,7 @@
                     <ul>
                         <li><strong>选择介质类型</strong>：根据实际介质选择热水、饱和蒸汽或过热蒸汽。</li>
                         <li><strong>输入字段</strong>：重量为必填项；热水需输入温度；饱和蒸汽需输入压力；过热蒸汽需同时输入压力和温度。</li>
-                        <li><strong>输入限制</strong>：温度 0~373°C，压力 0.0006~22.064 MPa，过热蒸汽温度不得低于对应压力的饱和温度。</li>
+                        <li><strong>输入限制</strong>：热水温度 0~374°C，过热蒸汽温度 0~800°C；饱和蒸汽压力 0.0006~22.064 MPa，过热蒸汽压力 0.001~100 MPa；过热蒸汽温度不得低于对应压力的饱和温度。</li>
                         <li><strong>添加条目</strong>：点击"添加条目"将计算结果添加到表格中，可多次添加不同介质。</li>
                     </ul>
                 </div>

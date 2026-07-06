@@ -3384,6 +3384,15 @@ const wenshangJsonData = {
       "s_liquid": 4.238,
       "s_vapor": 4.6293,
       "latent_heat": 252.85
+    },
+    {
+      "temperature": 374,
+      "pressure": 22.064,
+      "h_liquid": 2087.6,
+      "h_vapor": 2087.6,
+      "s_liquid": 4.442,
+      "s_vapor": 4.442,
+      "latent_heat": 0
     }
   ]
 };
@@ -7197,7 +7206,7 @@ function calculateHotWater(ton, temp) {
 function calculateSaturatedSteam(ton, pressure) {
     try {
         let details = '<div class="step-title">一、输入参数</div>';
-        details += `<ul><li>介质类型：饱和蒸汽</li><li>重量：${ton} 吨</li><li>压力：${pressure.toFixed(3)} MPa</li></ul>`;
+        details += `<ul><li>介质类型：饱和蒸汽</li><li>重量：${ton} 吨</li><li>压力：${pressure.toFixed(4)} MPa</li></ul>`;
 
         details += '<div class="step-title">二、查表获取焓值</div>';
         const h = getSaturatedSteamEnthalpy(pressure);
@@ -7210,20 +7219,20 @@ function calculateSaturatedSteam(ton, pressure) {
         let interpolationInfo = '';
         for (let i = 0; i < table.length - 1; i++) {
             if (pressure >= table[i].pressure && pressure <= table[i + 1].pressure) {
-                interpolationInfo = `<p>使用线性插值计算（压力位于 ${table[i].pressure.toFixed(6)} MPa 和 ${table[i + 1].pressure.toFixed(6)} MPa 之间）：</p>`;
+                interpolationInfo = `<p>使用线性插值计算（压力位于 ${table[i].pressure.toFixed(4)} MPa 和 ${table[i + 1].pressure.toFixed(4)} MPa 之间）：</p>`;
                 interpolationInfo += `<table class="interpolation-table">
                     <tr><th>压力 (MPa)</th><th>饱和蒸汽焓 (kJ/kg)</th></tr>
-                    <tr><td>${table[i].pressure.toFixed(6)}</td><td>${table[i].h_vapor.toFixed(2)}</td></tr>
-                    <tr><td>${pressure.toFixed(3)}</td><td><strong>${h.toFixed(2)}</strong> (插值)</td></tr>
-                    <tr><td>${table[i + 1].pressure.toFixed(6)}</td><td>${table[i + 1].h_vapor.toFixed(2)}</td></tr>
+                    <tr><td>${table[i].pressure.toFixed(4)}</td><td>${table[i].h_vapor.toFixed(2)}</td></tr>
+                    <tr><td>${pressure.toFixed(4)}</td><td><strong>${h.toFixed(2)}</strong> (插值)</td></tr>
+                    <tr><td>${table[i + 1].pressure.toFixed(4)}</td><td>${table[i + 1].h_vapor.toFixed(2)}</td></tr>
                 </table>`;
                 interpolationInfo += `<p>插值公式：h = h₁ + (h₂ - h₁) × (P - P₁) / (P₂ - P₁)</p>`;
-                interpolationInfo += `<p>代入计算：h = ${table[i].h_vapor.toFixed(2)} + (${table[i + 1].h_vapor.toFixed(2)} - ${table[i].h_vapor.toFixed(2)}) × (${pressure.toFixed(3)} - ${table[i].pressure.toFixed(6)}) / (${table[i + 1].pressure.toFixed(6)} - ${table[i].pressure.toFixed(6)}) = ${h.toFixed(2)} kJ/kg</p>`;
+                interpolationInfo += `<p>代入计算：h = ${table[i].h_vapor.toFixed(2)} + (${table[i + 1].h_vapor.toFixed(2)} - ${table[i].h_vapor.toFixed(2)}) × (${pressure.toFixed(4)} - ${table[i].pressure.toFixed(4)}) / (${table[i + 1].pressure.toFixed(4)} - ${table[i].pressure.toFixed(4)}) = ${h.toFixed(2)} kJ/kg</p>`;
                 break;
             }
         }
         
-        details += `<p>根据压力 ${pressure.toFixed(3)} MPa 查温熵表，得到饱和蒸汽焓 h = <strong>${h.toFixed(2)} kJ/kg</strong></p>`;
+        details += `<p>根据压力 ${pressure.toFixed(4)} MPa 查温熵表，得到饱和蒸汽焓 h = <strong>${h.toFixed(2)} kJ/kg</strong></p>`;
         if (interpolationInfo) details += interpolationInfo;
 
         details += '<div class="step-title">三、基准焓值</div>';
@@ -7249,16 +7258,26 @@ function calculateSaturatedSteam(ton, pressure) {
     }
 }
 
+/**
+ * 过热蒸汽计算函数
+ * 修正：确保插值始终在纯过热蒸汽区内进行，避免将过冷水数据混入插值。
+ * @param {number} ton - 重量 (吨)
+ * @param {number} pressure - 压力 (MPa)
+ * @param {number} temp - 温度 (°C)
+ * @returns {object|null} - { value: GJ, details: HTML字符串 }
+ */
 function calculateSuperheatedSteam(ton, pressure, temp) {
     try {
+        // ========== 一、输入参数 ==========
         let details = '<div class="step-title">一、输入参数</div>';
-        details += `<ul><li>介质类型：过热蒸汽</li><li>重量：${ton} 吨</li><li>压力：${pressure.toFixed(3)} MPa</li><li>温度：${temp.toFixed(2)} °C</li></ul>`;
+        details += `<ul><li>介质类型：过热蒸汽</li><li>重量：${ton} 吨</li><li>压力：${pressure.toFixed(4)} MPa</li><li>温度：${temp.toFixed(2)} °C</li></ul>`;
 
+        // ========== 二、状态验证 ==========
         const saturationTemp = getSaturationTempByPressure(pressure);
-        
         details += '<div class="step-title">二、状态验证</div>';
-        details += `<p>当前压力 ${pressure.toFixed(3)} MPa 下的饱和温度：<strong>${saturationTemp.toFixed(2)} °C</strong></p>`;
-        
+        details += `<p>当前压力 ${pressure.toFixed(4)} MPa 下的饱和温度：<strong>${saturationTemp.toFixed(2)} °C</strong></p>`;
+
+        // 情况1：温度等于饱和温度 → 转为饱和蒸汽计算
         if (Math.abs(temp - saturationTemp) < 0.01) {
             details += `<p>输入温度 ${temp.toFixed(2)}°C 等于饱和温度，自动切换为饱和蒸汽计算</p>`;
             const result = calculateSaturatedSteam(ton, pressure);
@@ -7267,20 +7286,23 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
             }
             return null;
         }
-        
+
+        // 情况2：温度低于饱和温度 → 无效状态
         if (temp < saturationTemp) {
             details += `<p class="error">❌ 错误：输入温度 ${temp.toFixed(2)}°C 低于饱和温度 ${saturationTemp.toFixed(2)}°C，不在过热蒸汽区</p>`;
             return null;
         }
-        
+
         details += `<p>输入温度 ${temp.toFixed(2)}°C > 饱和温度 ${saturationTemp.toFixed(2)}°C，状态有效，属于过热蒸汽</p>`;
 
-        details += '<div class="step-title">三、查表获取焓值（双线性插值）</div>';
+        // ========== 三、查表获取焓值（修正版双线性插值） ==========
+        details += '<div class="step-title">三、查表获取焓值（双线性插值，已修正）</div>';
         const pressures = steamTableData.pressures;
         const temperatures = steamTableData.temperatures;
         const data = steamTableData.data;
-        
-        let p1 = null, p2 = null, t1 = null, t2 = null;
+
+        // ---- 3.1 查找压力区间 ----
+        let p1 = null, p2 = null;
         for (let i = 0; i < pressures.length - 1; i++) {
             if (pressure >= pressures[i] && pressure <= pressures[i + 1]) {
                 p1 = pressures[i];
@@ -7288,63 +7310,116 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
                 break;
             }
         }
+        if (!p1 || !p2) {
+            details += '<p class="error">❌ 压力超出过热蒸汽表范围</p>';
+            return null;
+        }
+
+        // ---- 3.2 查找温度区间（必须 ≥ 饱和温度） ----
+        let t1 = null, t2 = null;
+        let useSaturatedAsLowerBound = false;   // 标记是否使用饱和蒸汽作为下界
+
         for (let i = 0; i < temperatures.length - 1; i++) {
-            if (temp >= temperatures[i] && temp <= temperatures[i + 1]) {
-                t1 = temperatures[i];
-                t2 = temperatures[i + 1];
+            const candidateT1 = temperatures[i];
+            const candidateT2 = temperatures[i + 1];
+
+            // 【判断1】如果整个温度区间都在饱和温度以下（含等于），跳过
+            if (candidateT2 <= saturationTemp) {
+                continue;
+            }
+            // 【判断2】如果区间跨越了饱和温度（下界<饱和温度<上界）
+            else if (candidateT1 < saturationTemp && candidateT2 > saturationTemp) {
+                t1 = saturationTemp;        // 下界设为饱和温度
+                t2 = candidateT2;           // 上界为原上界
+                useSaturatedAsLowerBound = true;
+                break;
+            }
+            // 【判断3】如果整个区间都在饱和温度以上（下界 >= 饱和温度）
+            else if (candidateT1 >= saturationTemp) {
+                t1 = candidateT1;
+                t2 = candidateT2;
                 break;
             }
         }
-        
-        if (!p1 || !t1) {
-            details += '<p class="error">❌ 无法在过热蒸汽表中找到该压力-温度组合</p>';
+
+        // 如果没找到有效的温度区间
+        if (!t1 || !t2) {
+            details += '<p class="error">❌ 该压力下没有足够的过热蒸汽数据（温度上限不足）</p>';
             return null;
         }
-        
-        const h11 = getEnthalpyValue(data, p1, t1);
-        const h12 = getEnthalpyValue(data, p1, t2);
-        const h21 = getEnthalpyValue(data, p2, t1);
-        const h22 = getEnthalpyValue(data, p2, t2);
-        
+
+        details += `<p>温度区间：${t1.toFixed(2)}°C ~ ${t2.toFixed(2)}°C</p>`;
+
+        // ---- 3.3 获取四个角点的焓值 ----
+        let h11, h12, h21, h22;
+
+        if (useSaturatedAsLowerBound) {
+            // 下界使用饱和蒸汽焓（从温熵表获取）
+            const h_sat = getSaturatedSteamEnthalpy(pressure);
+            if (h_sat === null) {
+                details += '<p class="error">❌ 无法获取饱和蒸汽焓</p>';
+                return null;
+            }
+            h11 = h_sat;
+            h21 = h_sat;
+            details += `<p>下界 T=${saturationTemp.toFixed(2)}°C 使用饱和蒸汽焓：h = ${h_sat.toFixed(2)} kJ/kg</p>`;
+
+            // 上界从过热蒸汽表获取（注意：t2 是原温度网格点，必须存在）
+            h12 = getEnthalpyValue(data, p1, t2);
+            h22 = getEnthalpyValue(data, p2, t2);
+        } else {
+            // 正常从过热蒸汽表获取四个角点
+            h11 = getEnthalpyValue(data, p1, t1);
+            h12 = getEnthalpyValue(data, p1, t2);
+            h21 = getEnthalpyValue(data, p2, t1);
+            h22 = getEnthalpyValue(data, p2, t2);
+        }
+
+        // 检查数据完整性
         if (h11 === null || h12 === null || h21 === null || h22 === null) {
-            details += '<p class="error">❌ 插值所需的网格点数据不完整</p>';
+            details += '<p class="error">❌ 插值所需数据不完整</p>';
             return null;
         }
-        
-        details += `<p>输入点位于网格区间：</p>`;
+
+        // ---- 3.4 显示插值网格 ----
+        details += `<p>插值网格：</p>`;
         details += `<table class="interpolation-table">
-            <tr><th></th><th>T=${t1}°C</th><th>T=${t2}°C</th></tr>
-            <tr><td>P=${p1.toFixed(3)} MPa</td><td>h=${h11.toFixed(2)} kJ/kg</td><td>h=${h12.toFixed(2)} kJ/kg</td></tr>
-            <tr><td>P=${p2.toFixed(3)} MPa</td><td>h=${h21.toFixed(2)} kJ/kg</td><td>h=${h22.toFixed(2)} kJ/kg</td></tr>
+            <tr><th></th><th>T=${t1.toFixed(2)}°C</th><th>T=${t2.toFixed(2)}°C</th></tr>
+            <tr><td>P=${p1.toFixed(4)} MPa</td><td>h=${h11.toFixed(2)} kJ/kg</td><td>h=${h12.toFixed(2)} kJ/kg</td></tr>
+            <tr><td>P=${p2.toFixed(4)} MPa</td><td>h=${h21.toFixed(2)} kJ/kg</td><td>h=${h22.toFixed(2)} kJ/kg</td></tr>
         </table>`;
-        
+
+        // ---- 3.5 执行双线性插值 ----
         details += '<p>双线性插值步骤：</p>';
-        
+
+        // 沿温度方向插值（压力 p1）
         const h1 = linearInterpolation(temp, t1, h11, t2, h12);
+        details += `<p>1. 沿温度方向插值（P=${p1.toFixed(4)} MPa）：</p>`;
+        details += `<p>h(${temp.toFixed(2)}) = ${h11.toFixed(2)} + (${h12.toFixed(2)} - ${h11.toFixed(2)}) × (${temp.toFixed(2)} - ${t1.toFixed(2)}) / (${t2.toFixed(2)} - ${t1.toFixed(2)}) = ${h1.toFixed(2)} kJ/kg</p>`;
+
+        // 沿温度方向插值（压力 p2）
         const h2 = linearInterpolation(temp, t1, h21, t2, h22);
+        details += `<p>2. 沿温度方向插值（P=${p2.toFixed(4)} MPa）：</p>`;
+        details += `<p>h(${temp.toFixed(2)}) = ${h21.toFixed(2)} + (${h22.toFixed(2)} - ${h21.toFixed(2)}) × (${temp.toFixed(2)} - ${t1.toFixed(2)}) / (${t2.toFixed(2)} - ${t1.toFixed(2)}) = ${h2.toFixed(2)} kJ/kg</p>`;
+
+        // 沿压力方向插值
         const h = linearInterpolation(pressure, p1, h1, p2, h2);
-        
-        details += `<p>1. 沿温度方向插值（P=${p1.toFixed(3)} MPa）：</p>`;
-        details += `<p>h(T=${temp.toFixed(2)}) = h(${t1}) + (h(${t2}) - h(${t1})) × (${temp.toFixed(2)} - ${t1}) / (${t2} - ${t1})</p>`;
-        details += `<p>h(${temp.toFixed(2)}) = ${h11.toFixed(2)} + (${h12.toFixed(2)} - ${h11.toFixed(2)}) × (${temp.toFixed(2)} - ${t1}) / (${t2} - ${t1}) = ${h1.toFixed(2)} kJ/kg</p>`;
-        
-        details += `<p>2. 沿温度方向插值（P=${p2.toFixed(3)} MPa）：</p>`;
-        details += `<p>h(${temp.toFixed(2)}) = ${h21.toFixed(2)} + (${h22.toFixed(2)} - ${h21.toFixed(2)}) × (${temp.toFixed(2)} - ${t1}) / (${t2} - ${t1}) = ${h2.toFixed(2)} kJ/kg</p>`;
-        
         details += `<p>3. 沿压力方向插值（T=${temp.toFixed(2)}°C）：</p>`;
-        details += `<p>h(P=${pressure.toFixed(3)}) = h(${p1.toFixed(3)}) + (h(${p2.toFixed(3)}) - h(${p1.toFixed(3)})) × (${pressure.toFixed(3)} - ${p1.toFixed(3)}) / (${p2.toFixed(3)} - ${p1.toFixed(3)})</p>`;
-        details += `<p>h(${pressure.toFixed(3)}) = ${h1.toFixed(2)} + (${h2.toFixed(2)} - ${h1.toFixed(2)}) × (${pressure.toFixed(3)} - ${p1.toFixed(3)}) / (${p2.toFixed(3)} - ${p1.toFixed(3)}) = ${h.toFixed(2)} kJ/kg</p>`;
-        
+        details += `<p>h(${pressure.toFixed(4)}) = ${h1.toFixed(2)} + (${h2.toFixed(2)} - ${h1.toFixed(2)}) × (${pressure.toFixed(4)} - ${p1.toFixed(4)}) / (${p2.toFixed(4)} - ${p1.toFixed(4)}) = ${h.toFixed(2)} kJ/kg</p>`;
+
         details += `<p>最终得到过热蒸汽焓：h = <strong>${h.toFixed(2)} kJ/kg</strong></p>`;
 
+        // ========== 四、基准焓值 ==========
         details += '<div class="step-title">四、基准焓值</div>';
         details += `<p>基准温度 20°C 对应的饱和水焓：h_ref = <strong>${refEnthalpy.toFixed(2)} kJ/kg</strong></p>`;
 
+        // ========== 五、计算公式 ==========
         details += '<div class="step-title">五、计算公式</div>';
         const deltaH = h - refEnthalpy;
         details += `<div class="formula">热力购入量 (GJ) = (h - h_ref) × 重量(吨) × 1000 ÷ 1,000,000</div>`;
         details += `<p>代入数值：(${h.toFixed(2)} - ${refEnthalpy.toFixed(2)}) × ${ton} × 1000 ÷ 1,000,000</p>`;
-        
+
+        // ========== 六、分步计算 ==========
         details += '<div class="step-title">六、分步计算</div>';
         details += `<ul>
             <li>焓差：Δh = ${h.toFixed(2)} - ${refEnthalpy.toFixed(2)} = <strong>${deltaH.toFixed(2)} kJ/kg</strong></li>
@@ -7352,8 +7427,10 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
             <li>转换为 GJ：${(deltaH * ton * 1000).toFixed(2)} ÷ 1,000,000 = <strong>${((deltaH * ton * 1000) / 1000000).toFixed(2)} GJ</strong></li>
         </ul>`;
 
+        // ========== 七、最终结果 ==========
         const result = (h - refEnthalpy) * ton * 1000 / 1000000;
         return { value: result, details: details };
+
     } catch (e) {
         console.error('过热蒸汽计算错误:', e);
         return null;
@@ -7397,7 +7474,7 @@ function renderWenshangTable() {
         html += `
             <tr>
                 <td>${row.temperature.toFixed(2)}</td>
-                <td>${row.pressure.toFixed(6)}</td>
+                <td>${row.pressure.toFixed(4)}</td>
                 <td>${row.h_liquid.toFixed(2)}</td>
                 <td>${row.h_vapor.toFixed(2)}</td>
             </tr>
@@ -7496,7 +7573,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (mediumType === 'hot_water') {
             pressureGroup.style.display = 'none';
-            temperatureInput.placeholder = '0~373';
+            temperatureInput.placeholder = '0~374';
         } else if (mediumType === 'saturated_steam') {
             temperatureGroup.style.display = 'none';
             pressureInput.placeholder = '0.0006~22.064';
@@ -7517,8 +7594,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (mediumType === 'hot_water') {
-            if (isNaN(temp) || temp < 0 || temp > 373) {
-                return { valid: false, message: '请输入有效的温度（0~373°C）' };
+            if (isNaN(temp) || temp < 0 || temp > 374) {
+                return { valid: false, message: '请输入有效的温度（0~374°C）' };
             }
         } else if (mediumType === 'saturated_steam') {
             if (isNaN(pressure) || pressure < 0.0006 || pressure > 22.064) {
@@ -7530,6 +7607,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (isNaN(temp) || temp < 0 || temp > 800) {
                 return { valid: false, message: '请输入有效的温度（0~800°C）' };
+            }
+            const saturationTemp = getSaturationTempByPressure(pressure);
+            if (saturationTemp !== null && temp < saturationTemp) {
+                return { valid: false, message: `温度 ${temp.toFixed(2)}°C 低于当前压力下的饱和温度 ${saturationTemp.toFixed(2)}°C` };
             }
         }
 
@@ -7556,7 +7637,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${getMediumTypeName(item.type)}</td>
                     <td>${item.weight.toFixed(2)}</td>
                     <td>${item.temp !== null ? item.temp.toFixed(2) : '-'}</td>
-                    <td>${item.pressure !== null ? item.pressure.toFixed(3) : '-'}</td>
+                    <td>${item.pressure !== null ? item.pressure.toFixed(4) : '-'}</td>
                     <td>${item.gj.toFixed(2)}</td>
                     <td>
                         <button class="action-btn view-btn" data-index="${index}">计算过程展示</button>
