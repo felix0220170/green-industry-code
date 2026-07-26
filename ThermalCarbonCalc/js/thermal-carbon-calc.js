@@ -7318,24 +7318,39 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
         // ---- 3.2 查找温度区间（必须 ≥ 饱和温度） ----
         let t1 = null, t2 = null;
         let useSaturatedAsLowerBound = false;   // 标记是否使用饱和蒸汽作为下界
+        let useGridPointDirect = false;        // 标记是否直接使用网格点焓值
 
         for (let i = 0; i < temperatures.length - 1; i++) {
             const candidateT1 = temperatures[i];
             const candidateT2 = temperatures[i + 1];
 
-            // 【判断1】如果整个温度区间都在饱和温度以下（含等于），跳过
+            // 如果用户温度不在该区间内，跳过
+            if (temp < candidateT1 || temp > candidateT2) {
+                continue;
+            }
+
+            // 如果整个区间都在饱和温度以下（不应发生，已提前拦截）
             if (candidateT2 <= saturationTemp) {
                 continue;
             }
-            // 【判断2】如果区间跨越了饱和温度（下界<饱和温度<上界）
-            else if (candidateT1 < saturationTemp && candidateT2 > saturationTemp) {
+
+            // 如果用户温度恰好等于上界网格点（命中网格点），直接使用网格点焓值
+            if (temp === candidateT2) {
+                t1 = candidateT1;
+                t2 = candidateT2;
+                useGridPointDirect = true;
+                break;
+            }
+
+            // 如果区间跨越了饱和温度（下界<饱和温度<上界）且包含用户温度
+            if (candidateT1 < saturationTemp && candidateT2 > saturationTemp) {
                 t1 = saturationTemp;        // 下界设为饱和温度
                 t2 = candidateT2;           // 上界为原上界
                 useSaturatedAsLowerBound = true;
                 break;
             }
-            // 【判断3】如果整个区间都在饱和温度以上（下界 >= 饱和温度）
-            else if (candidateT1 >= saturationTemp) {
+            // 如果整个区间都在饱和温度以上（下界 >= 饱和温度）且包含用户温度
+            if (candidateT1 >= saturationTemp) {
                 t1 = candidateT1;
                 t2 = candidateT2;
                 break;
@@ -7353,7 +7368,18 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
         // ---- 3.3 获取四个角点的焓值 ----
         let h11, h12, h21, h22;
 
-        if (useSaturatedAsLowerBound) {
+        if (useGridPointDirect) {
+            // 命中网格点：直接使用网格点（t2）的焓值作为上下界
+            h12 = getEnthalpyValue(data, p1, t2);
+            h22 = getEnthalpyValue(data, p2, t2);
+            if (h12 === null || h22 === null) {
+                details += '<p class="error">❌ 网格点焓值数据缺失</p>';
+                return null;
+            }
+            h11 = h12;
+            h21 = h22;
+            details += `<p>命中网格点 T=${t2.toFixed(2)}°C，直接使用该点焓值</p>`;
+        } else if (useSaturatedAsLowerBound) {
             // 下界使用饱和蒸汽焓（从温熵表获取）
             const h_sat = getSaturatedSteamEnthalpy(pressure);
             if (h_sat === null) {
