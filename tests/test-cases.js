@@ -271,7 +271,7 @@ const testCases = {
         success: true, 
         minGJ: 2.58, 
         maxGJ: 2.78,
-        expectedInterval: { t1: 151.8, t2: 160, description: '使用饱和温度作为下界' }
+        expectedInterval: { t1: 151.8, t2: 160, description: '使用较高饱和温度作为统一下界' }
       }
     },
     {
@@ -282,29 +282,29 @@ const testCases = {
         success: true, 
         minGJ: 2.58, 
         maxGJ: 2.78,
-        expectedInterval: { t1: 151.8, t2: 160, description: '使用饱和温度作为下界' }
+        expectedInterval: { t1: 151.8, t2: 160, description: '使用较高饱和温度作为统一下界' }
       }
     },
     {
       id: 'BOUND-003',
-      name: '边界组合 - P=0.4, T=159（压力和温度都不在网格点，P=0.5角点需饱和修正）',
+      name: '边界组合 - P=0.4, T=159（压力和温度都不在网格点，使用统一饱和温度下界）',
       input: { mediumType: 'superheated_steam', weight: 1, temp: 159, pressure: 0.4 },
       expected: { 
         success: true, 
         minGJ: 2.59, 
         maxGJ: 2.79,
-        expectedInterval: { t1: 150, t2: 160, description: 'P=0.5行角点需饱和修正' }
+        expectedInterval: { t1: 151.8, t2: 160, description: '使用较高饱和温度作为统一下界' }
       }
     },
     {
       id: 'BOUND-004',
-      name: '边界组合 - P=0.4, T=160（压力不在网格点，温度在网格点，P=0.5角点需饱和修正）',
+      name: '边界组合 - P=0.4, T=160（压力不在网格点，温度在网格点，使用统一饱和温度下界）',
       input: { mediumType: 'superheated_steam', weight: 1, temp: 160, pressure: 0.4 },
       expected: { 
         success: true, 
         minGJ: 2.59, 
         maxGJ: 2.79,
-        expectedInterval: { t1: 150, t2: 160, description: 'P=0.5行角点需饱和修正' }
+        expectedInterval: { t1: 151.8, t2: 160, description: '使用较高饱和温度作为统一下界' }
       }
     }
   ],

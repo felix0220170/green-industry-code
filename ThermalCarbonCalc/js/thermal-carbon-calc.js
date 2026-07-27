@@ -7315,10 +7315,14 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
             return null;
         }
 
-        // ---- 3.2 查找温度区间（必须 ≥ 饱和温度） ----
+        // ---- 3.2 查找温度区间（统一使用较高饱和温度作为下界） ----
         let t1 = null, t2 = null;
-        let useSaturatedAsLowerBound = false;   // 标记是否使用饱和蒸汽作为下界
-        let useGridPointDirect = false;        // 标记是否直接使用网格点焓值
+        let useSaturatedAsLowerBound = false;
+
+        // 计算两个压力点的饱和温度
+        const satTempP1 = getSaturationTempByPressure(p1);
+        const satTempP2 = getSaturationTempByPressure(p2);
+        const maxSatTemp = Math.max(satTempP1, satTempP2);  // 两个压力点中较高的饱和温度
 
         for (let i = 0; i < temperatures.length - 1; i++) {
             const candidateT1 = temperatures[i];
@@ -7329,36 +7333,34 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
                 continue;
             }
 
-            // 如果整个区间都在饱和温度以下（不应发生，已提前拦截）
-            if (candidateT2 <= saturationTemp) {
+            // 如果整个区间都在最高饱和温度以下（不应发生，已提前拦截）
+            if (candidateT2 <= maxSatTemp) {
                 continue;
             }
 
             // 如果用户温度恰好等于上界网格点（命中网格点）
             if (temp === candidateT2) {
-                if (candidateT1 < saturationTemp) {
-                    // 命中网格点但下界低于饱和温度，使用饱和温度作为显示下界
-                    t1 = saturationTemp;
+                if (candidateT1 < maxSatTemp) {
+                    // 命中网格点但下界低于最高饱和温度，使用统一的饱和温度作为下界
+                    t1 = maxSatTemp;
                     t2 = candidateT2;
-                    useGridPointDirect = true;
                     useSaturatedAsLowerBound = true;
                 } else {
                     t1 = candidateT1;
                     t2 = candidateT2;
-                    useGridPointDirect = true;
                 }
                 break;
             }
 
-            // 如果区间跨越了饱和温度（下界<饱和温度<上界）且包含用户温度
-            if (candidateT1 < saturationTemp && candidateT2 > saturationTemp) {
-                t1 = saturationTemp;        // 下界设为饱和温度
-                t2 = candidateT2;           // 上界为原上界
+            // 如果区间跨越了最高饱和温度（下界<最高饱和温度<上界）且包含用户温度
+            if (candidateT1 < maxSatTemp && candidateT2 > maxSatTemp) {
+                t1 = maxSatTemp;        // 下界设为两个压力点中较高的饱和温度
+                t2 = candidateT2;       // 上界为原上界
                 useSaturatedAsLowerBound = true;
                 break;
             }
-            // 如果整个区间都在饱和温度以上（下界 >= 饱和温度）且包含用户温度
-            if (candidateT1 >= saturationTemp) {
+            // 如果整个区间都在最高饱和温度以上（下界 >= 最高饱和温度）且包含用户温度
+            if (candidateT1 >= maxSatTemp) {
                 t1 = candidateT1;
                 t2 = candidateT2;
                 break;
@@ -7371,7 +7373,13 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
             return null;
         }
 
-        details += `<p>温度区间：${t1.toFixed(2)}°C ~ ${t2.toFixed(2)}°C</p>`;
+        // 如果使用了统一的饱和温度作为下界，添加说明
+        if (useSaturatedAsLowerBound) {
+            details += `<p>温度区间：${t1.toFixed(2)}°C ~ ${t2.toFixed(2)}°C</p>`;
+            details += `<p style="font-size:0.9em;color:#888;">注：温度区间下界使用了两个压力点（${p1.toFixed(4)}MPa 和 ${p2.toFixed(4)}MPa）中较高的饱和温度 ${maxSatTemp.toFixed(2)}°C，以确保所有角点都是蒸汽状态</p>`;
+        } else {
+            details += `<p>温度区间：${t1.toFixed(2)}°C ~ ${t2.toFixed(2)}°C</p>`;
+        }
 
         // ---- 3.3 获取四个角点的焓值（计算和显示通用） ----
         // 使用统一的角点获取逻辑，确保计算与显示一致
@@ -7446,9 +7454,9 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
         const cell21 = formatCornerCell(corner21);
         const cell22 = formatCornerCell(corner22);
 
-        // 构建表格 - 每个单元格显示实际温度
+        // 构建表格 - 统一温度表头
         details += `<table class="interpolation-table">
-            <tr><th></th><th>下界</th><th>上界</th></tr>
+            <tr><th></th><th>T=${t1.toFixed(2)}°C</th><th>T=${t2.toFixed(2)}°C</th></tr>
             <tr><td>P=${p1.toFixed(4)} MPa</td><td>${cell11.cellHtml}</td><td>${cell12.cellHtml}</td></tr>
             <tr><td>P=${p2.toFixed(4)} MPa</td><td>${cell21.cellHtml}</td><td>${cell22.cellHtml}</td></tr>
         </table>`;
@@ -7480,14 +7488,8 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
         details += '<p>双线性插值步骤：</p>';
         let h1, h2;
 
-        // 为每个压力使用各自的温度区间进行插值
-        const t1_p1 = corner11.temp;  // P=p1 行的实际下界温度
-        const t2_p1 = corner12.temp;  // P=p1 行的上界温度
-        const t1_p2 = corner21.temp;  // P=p2 行的实际下界温度
-        const t2_p2 = corner22.temp;  // P=p2 行的上界温度
-
         // 检查是否命中网格点（命中上界）
-        const isGridPointDirect = (temp === t2);
+        const isGridPointDirect = Math.abs(temp - t2) < 0.01;
 
         if (isGridPointDirect) {
             // 命中网格点：温度插值是常数，简化显示
@@ -7495,26 +7497,20 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
             h2 = h22;  // 同理
             
             details += `<p>1. 沿温度方向插值（P=${p1.toFixed(4)} MPa）：</p>`;
-            details += `<p>因 T=${temp.toFixed(2)}°C 正好命中网格点，h(${temp.toFixed(2)}) = h(T=${t2_p1.toFixed(2)}) = <strong>${h1.toFixed(2)} kJ/kg</strong></p>`;
+            details += `<p>因 T=${temp.toFixed(2)}°C 正好命中网格点，h(${temp.toFixed(2)}) = h(T=${t2.toFixed(2)}) = <strong>${h1.toFixed(2)} kJ/kg</strong></p>`;
 
             details += `<p>2. 沿温度方向插值（P=${p2.toFixed(4)} MPa）：</p>`;
-            details += `<p>因 T=${temp.toFixed(2)}°C 正好命中网格点，h(${temp.toFixed(2)}) = h(T=${t2_p2.toFixed(2)}) = <strong>${h2.toFixed(2)} kJ/kg</strong></p>`;
+            details += `<p>因 T=${temp.toFixed(2)}°C 正好命中网格点，h(${temp.toFixed(2)}) = h(T=${t2.toFixed(2)}) = <strong>${h2.toFixed(2)} kJ/kg</strong></p>`;
         } else {
             // 沿温度方向插值（压力 p1）
-            h1 = linearInterpolation(temp, t1_p1, h11, t2_p1, h12);
+            h1 = linearInterpolation(temp, t1, h11, t2, h12);
             details += `<p>1. 沿温度方向插值（P=${p1.toFixed(4)} MPa）：</p>`;
-            if (t1_p1 !== t1) {
-                details += `<p>注：P=${p1.toFixed(4)} MPa 行下界温度已从 ${t1.toFixed(2)}°C 修正为 ${t1_p1.toFixed(2)}°C（饱和温度）</p>`;
-            }
-            details += `<p>h(${temp.toFixed(2)}) = ${h11.toFixed(2)} + (${h12.toFixed(2)} - ${h11.toFixed(2)}) × (${temp.toFixed(2)} - ${t1_p1.toFixed(2)}) / (${t2_p1.toFixed(2)} - ${t1_p1.toFixed(2)}) = ${h1.toFixed(2)} kJ/kg</p>`;
+            details += `<p>h(${temp.toFixed(2)}) = ${h11.toFixed(2)} + (${h12.toFixed(2)} - ${h11.toFixed(2)}) × (${temp.toFixed(2)} - ${t1.toFixed(2)}) / (${t2.toFixed(2)} - ${t1.toFixed(2)}) = ${h1.toFixed(2)} kJ/kg</p>`;
 
             // 沿温度方向插值（压力 p2）
-            h2 = linearInterpolation(temp, t1_p2, h21, t2_p2, h22);
+            h2 = linearInterpolation(temp, t1, h21, t2, h22);
             details += `<p>2. 沿温度方向插值（P=${p2.toFixed(4)} MPa）：</p>`;
-            if (t1_p2 !== t1) {
-                details += `<p>注：P=${p2.toFixed(4)} MPa 行下界温度已从 ${t1.toFixed(2)}°C 修正为 ${t1_p2.toFixed(2)}°C（饱和温度）</p>`;
-            }
-            details += `<p>h(${temp.toFixed(2)}) = ${h21.toFixed(2)} + (${h22.toFixed(2)} - ${h21.toFixed(2)}) × (${temp.toFixed(2)} - ${t1_p2.toFixed(2)}) / (${t2_p2.toFixed(2)} - ${t1_p2.toFixed(2)}) = ${h2.toFixed(2)} kJ/kg</p>`;
+            details += `<p>h(${temp.toFixed(2)}) = ${h21.toFixed(2)} + (${h22.toFixed(2)} - ${h21.toFixed(2)}) × (${temp.toFixed(2)} - ${t1.toFixed(2)}) / (${t2.toFixed(2)} - ${t1.toFixed(2)}) = ${h2.toFixed(2)} kJ/kg</p>`;
         }
 
         // 沿压力方向插值
