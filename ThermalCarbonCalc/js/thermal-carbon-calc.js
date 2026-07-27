@@ -7288,7 +7288,7 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
         }
 
         // 情况2：温度低于饱和温度 → 无效状态
-        if (temp < saturationTemp) {
+        if (temp < saturationTemp - 0.01) {
             details += `<p class="error">❌ 错误：输入温度 ${temp.toFixed(2)}°C 低于饱和温度 ${saturationTemp.toFixed(2)}°C，不在过热蒸汽区</p>`;
             return null;
         }
@@ -7373,210 +7373,148 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
 
         details += `<p>温度区间：${t1.toFixed(2)}°C ~ ${t2.toFixed(2)}°C</p>`;
 
-        // ---- 3.3 获取四个角点的焓值 ----
-        let h11, h12, h21, h22;
-        let display_h11, display_h12, display_h21, display_h22;
-        let display_info11, display_info12, display_info21, display_info22;
-
-        if (useGridPointDirect && useSaturatedAsLowerBound) {
-            // 命中网格点 + 下界跨越饱和温度：计算用网格点值，显示用饱和温度
-            h12 = getEnthalpyValue(data, p1, t2);
-            h22 = getEnthalpyValue(data, p2, t2);
-            if (h12 === null || h22 === null) {
-                details += '<p class="error">❌ 网格点焓值数据缺失</p>';
-                return null;
-            }
-            h11 = h12;
-            h21 = h22;
-
-            // 显示：下界用插值/饱和蒸汽值（因 t1 不是网格点）
-            const interpResult = getInterpolatedEnthalpy(data, temperatures, p1, t1);
-            display_h11 = interpResult ? interpResult.enthalpy : null;
-            display_h12 = h12;
-            display_h21 = getSaturatedSteamEnthalpy(p2);
-            display_h22 = h22;
-            
-            display_info11 = { value: display_h11, label: '过热', isLiquid: false, isInterpolated: true, interpInfo: interpResult };
-            display_info12 = { value: h12, label: '蒸汽', isLiquid: false, isInterpolated: false };
-            display_info21 = { value: display_h21, label: '饱和', isLiquid: true, isInterpolated: false };
-            display_info22 = { value: h22, label: '蒸汽', isLiquid: false, isInterpolated: false };
-
-            details += `<p>命中网格点 T=${t2.toFixed(2)}°C，下界跨越饱和温度，使用饱和温度 ${t1.toFixed(2)}°C 作为显示下界</p>`;
-
-            // 显示插值过程（如果 P=p1, T=t1 需要插值）
-            if (interpResult && interpResult.t1 !== interpResult.t2) {
-                details += `<p>P=${p1.toFixed(4)} MPa, T=${t1.toFixed(2)}°C 从过热蒸汽表插值：h = ${interpResult.enthalpy.toFixed(2)} kJ/kg</p>`;
-                details += `<p style="font-size:0.9em;color:#666;">插值过程：在 P=${p1.toFixed(4)} MPa 下，温度 ${t1.toFixed(2)}°C 介于温度网格点 ${interpResult.t1.toFixed(2)}°C 和 ${interpResult.t2.toFixed(2)}°C 之间，线性插值得到</p>`;
-                details += `<p style="font-size:0.9em;color:#888;">h(${t1.toFixed(2)}) = ${interpResult.h1.toFixed(2)} + (${interpResult.h2.toFixed(2)} - ${interpResult.h1.toFixed(2)}) × (${t1.toFixed(2)} - ${interpResult.t1.toFixed(2)}) / (${interpResult.t2.toFixed(2)} - ${interpResult.t1.toFixed(2)}) = ${interpResult.enthalpy.toFixed(2)} kJ/kg</p>`;
-            } else if (interpResult) {
-                // 命中网格点，直接使用表中数据
-                details += `<p>P=${p1.toFixed(4)} MPa, T=${t1.toFixed(2)}°C 过热蒸汽表直接查得：h = ${interpResult.enthalpy.toFixed(2)} kJ/kg</p>`;
-            }
-        } else if (useGridPointDirect) {
-            // 命中网格点：获取网格点焓值用于计算
-            h12 = getEnthalpyValue(data, p1, t2);
-            h22 = getEnthalpyValue(data, p2, t2);
-            if (h12 === null || h22 === null) {
-                details += '<p class="error">❌ 网格点焓值数据缺失</p>';
-                return null;
-            }
-            // 计算时直接使用网格点值
-            h11 = h12;
-            h21 = h22;
-
-            // 获取各压力的饱和温度，用于判断角点是否跨越饱和
-            const satTempP1 = getSaturationTempByPressure(p1);
-            const satTempP2 = getSaturationTempByPressure(p2);
-
-            // 显示时检查角点是否跨越饱和温度
-            display_info11 = getDisplayEnthalpy(data, p1, t1, satTempP1);
-            display_info12 = getDisplayEnthalpy(data, p1, t2, satTempP1);
-            display_info21 = getDisplayEnthalpy(data, p2, t1, satTempP2);
-            display_info22 = getDisplayEnthalpy(data, p2, t2, satTempP2);
-
-            display_h11 = display_info11.value;
-            display_h12 = display_info12.value;
-            display_h21 = display_info21.value;
-            display_h22 = display_info22.value;
-
-            // 检查是否有跨越饱和温度的角点
-            const hasLiquidCorners = display_info11.isLiquid || display_info12.isLiquid || display_info21.isLiquid || display_info22.isLiquid;
-            
-            if (hasLiquidCorners) {
-                const liquidCorners = [];
-                if (display_info11.isLiquid) liquidCorners.push(`P=${p1.toFixed(4)}MPa, T=${t1.toFixed(2)}°C`);
-                if (display_info12.isLiquid) liquidCorners.push(`P=${p1.toFixed(4)}MPa, T=${t2.toFixed(2)}°C`);
-                if (display_info21.isLiquid) liquidCorners.push(`P=${p2.toFixed(4)}MPa, T=${t1.toFixed(2)}°C`);
-                if (display_info22.isLiquid) liquidCorners.push(`P=${p2.toFixed(4)}MPa, T=${t2.toFixed(2)}°C`);
-                details += `<p>命中网格点 T=${t2.toFixed(2)}°C，直接使用该点焓值。注意：角点 ${liquidCorners.join(', ')} 温度低于饱和温度，显示已替换为饱和蒸汽焓值。</p>`;
-            } else {
-                details += `<p>命中网格点 T=${t2.toFixed(2)}°C，直接使用该点焓值</p>`;
-            }
-        } else if (useSaturatedAsLowerBound) {
-            // 下界因跨越饱和温度，需要特殊处理
-            // P=p2: 使用目标压力的饱和蒸汽焓（正确，因为该点恰在饱和温度）
-            const h_sat_p2 = getSaturatedSteamEnthalpy(p2);
-            if (h_sat_p2 === null) {
-                details += '<p class="error">❌ 无法获取饱和蒸汽焓</p>';
-                return null;
-            }
-            h21 = h_sat_p2;
-
-            // P=p1: 尝试从过热蒸汽表插值获取（因 p1 < p2，在饱和温度时蒸汽已过热）
-            const interpResult2 = getInterpolatedEnthalpy(data, temperatures, p1, t1);
-            let h11_value, interpInfo = null;
-            if (interpResult2 === null) {
-                // 若过热蒸汽表无数据，回退到 p1 压力的饱和蒸汽焓
-                const h_sat_p1 = getSaturatedSteamEnthalpy(p1);
-                if (h_sat_p1 === null) {
-                    details += '<p class="error">❌ 无法获取 P₁ 压力的焓值</p>';
-                    return null;
-                }
-                h11_value = h_sat_p1;
-                details += `<p>P=${p1.toFixed(4)} MPa, T=${t1.toFixed(2)}°C 过热蒸汽表无数据，回退使用饱和蒸汽焓：h = ${h11_value.toFixed(2)} kJ/kg</p>`;
-            } else {
-                h11_value = interpResult2.enthalpy;
-                interpInfo = interpResult2;
-                details += `<p>P=${p1.toFixed(4)} MPa, T=${t1.toFixed(2)}°C 从过热蒸汽表插值：h = ${h11_value.toFixed(2)} kJ/kg</p>`;
-                // 显示真实的温度网格点插值过程
-                details += `<p style="font-size:0.9em;color:#666;">插值过程：在 P=${p1.toFixed(4)} MPa 下，温度 ${t1.toFixed(2)}°C 介于温度网格点 ${interpInfo.t1.toFixed(2)}°C 和 ${interpInfo.t2.toFixed(2)}°C 之间，线性插值得到</p>`;
-                details += `<p style="font-size:0.9em;color:#888;">h(${t1.toFixed(2)}) = ${interpInfo.h1.toFixed(2)} + (${interpInfo.h2.toFixed(2)} - ${interpInfo.h1.toFixed(2)}) × (${t1.toFixed(2)} - ${interpInfo.t1.toFixed(2)}) / (${interpInfo.t2.toFixed(2)} - ${interpInfo.t1.toFixed(2)}) = ${h11_value.toFixed(2)} kJ/kg</p>`;
-            }
-            h11 = h11_value;
-
-            details += `<p>下界 T=${t1.toFixed(2)}°C：P=${p1.toFixed(4)} MPa → h=${h11_value.toFixed(2)} kJ/kg（过热），P=${p2.toFixed(4)} MPa → h=${h21.toFixed(2)} kJ/kg（饱和）</p>`;
-
-            // 上界从过热蒸汽表获取（t2 是原温度网格点，必须存在）
-            h12 = getEnthalpyValue(data, p1, t2);
-            h22 = getEnthalpyValue(data, p2, t2);
-
-            // 设置显示信息
-            display_info11 = { value: h11_value, label: '过热', isLiquid: false, isInterpolated: true, interpInfo: interpInfo };
-            display_info12 = { value: h12, label: '蒸汽', isLiquid: false, isInterpolated: false };
-            display_info21 = { value: h21, label: '饱和', isLiquid: true, isInterpolated: false };
-            display_info22 = { value: h22, label: '蒸汽', isLiquid: false, isInterpolated: false };
-            display_h11 = h11_value;
-            display_h12 = h12;
-            display_h21 = h21;
-            display_h22 = h22;
-        } else {
-            // 正常从过热蒸汽表获取四个角点
-            h11 = getEnthalpyValue(data, p1, t1);
-            h12 = getEnthalpyValue(data, p1, t2);
-            h21 = getEnthalpyValue(data, p2, t1);
-            h22 = getEnthalpyValue(data, p2, t2);
-        }
+        // ---- 3.3 获取四个角点的焓值（计算和显示通用） ----
+        // 使用统一的角点获取逻辑，确保计算与显示一致
+        const corner11 = getCornerEnthalpy(data, p1, t1);
+        const corner12 = getCornerEnthalpy(data, p1, t2);
+        const corner21 = getCornerEnthalpy(data, p2, t1);
+        const corner22 = getCornerEnthalpy(data, p2, t2);
 
         // 检查数据完整性
-        if (h11 === null || h12 === null || h21 === null || h22 === null) {
+        if (corner11.enthalpy === null || corner12.enthalpy === null || 
+            corner21.enthalpy === null || corner22.enthalpy === null) {
             details += '<p class="error">❌ 插值所需数据不完整</p>';
             return null;
         }
 
-        // ---- 3.4 显示插值网格 ----
-        details += `<p>插值网格：</p>`;
-        
-        // 构建统一的角点显示函数
-        const formatCell = (info, fallback) => {
-            if (!info) {
-                return fallback !== null && fallback !== undefined ? `${fallback.toFixed(2)} kJ/kg` : '— kJ/kg';
-            }
-            const val = info.value !== null && info.value !== undefined ? info.value.toFixed(2) : '—';
-            let label = '';
-            if (info.isLiquid) {
-                label = ' <span style="color:#e67e22;">(饱和)</span>';
-            } else if (info.isInterpolated) {
-                label = ' <span style="color:#2980b9;">(过热)</span>';
-            }
-            return `${val} kJ/kg${label}`;
-        };
-        
-        if (useGridPointDirect || useSaturatedAsLowerBound) {
-            details += `<table class="interpolation-table">
-                <tr><th></th><th>T=${t1.toFixed(2)}°C</th><th>T=${t2.toFixed(2)}°C</th></tr>
-                <tr><td>P=${p1.toFixed(4)} MPa</td><td>h=${formatCell(display_info11, display_h11)}</td><td>h=${formatCell(display_info12, display_h12)}</td></tr>
-                <tr><td>P=${p2.toFixed(4)} MPa</td><td>h=${formatCell(display_info21, display_h21)}</td><td>h=${formatCell(display_info22, display_h22)}</td></tr>
-            </table>`;
-            
-            if (useGridPointDirect && useSaturatedAsLowerBound) {
-                details += `<p style="font-size:0.9em;color:#888;">※ 命中网格点 T=${t2.toFixed(2)}°C，下界跨越饱和温度，使用饱和温度 ${t1.toFixed(2)}°C 作为显示下界</p>`;
-            } else if (useGridPointDirect) {
-                details += `<p style="font-size:0.9em;color:#888;">※ 命中网格点 T=${t2.toFixed(2)}°C，直接使用该点焓值</p>`;
+        // 用于计算的焓值（使用修正后的值）
+        const h11 = corner11.enthalpy;
+        const h12 = corner12.enthalpy;
+        const h21 = corner21.enthalpy;
+        const h22 = corner22.enthalpy;
+
+        // 记录被修正的角点，用于生成说明文字
+        const modifiedCorners = [];
+        if (corner11.isSaturated) {
+            if (Math.abs(corner11.originalTemp - corner11.temp) < 0.01) {
+                modifiedCorners.push(`P=${p1.toFixed(4)}MPa 行：T=${corner11.originalTemp.toFixed(2)}°C 正好等于饱和温度，已使用饱和蒸汽焓`);
             } else {
-                details += `<p style="font-size:0.9em;color:#888;">※ 下界因跨越饱和温度：P=${p1.toFixed(4)} MPa (过热) 使用线性插值，P=${p2.toFixed(4)} MPa (饱和) 使用饱和蒸汽焓</p>`;
+                modifiedCorners.push(`P=${p1.toFixed(4)}MPa 行：T=${corner11.originalTemp.toFixed(2)}°C 低于饱和温度 ${corner11.temp.toFixed(2)}°C，已替换为饱和蒸汽焓`);
             }
-        } else {
-            details += `<table class="interpolation-table">
-                <tr><th></th><th>T=${t1.toFixed(2)}°C</th><th>T=${t2.toFixed(2)}°C</th></tr>
-                <tr><td>P=${p1.toFixed(4)} MPa</td><td>h=${h11.toFixed(2)} kJ/kg</td><td>h=${h12.toFixed(2)} kJ/kg</td></tr>
-                <tr><td>P=${p2.toFixed(4)} MPa</td><td>h=${h21.toFixed(2)} kJ/kg</td><td>h=${h22.toFixed(2)} kJ/kg</td></tr>
-            </table>`;
+        }
+        if (corner21.isSaturated) {
+            if (Math.abs(corner21.originalTemp - corner21.temp) < 0.01) {
+                modifiedCorners.push(`P=${p2.toFixed(4)}MPa 行：T=${corner21.originalTemp.toFixed(2)}°C 正好等于饱和温度，已使用饱和蒸汽焓`);
+            } else {
+                modifiedCorners.push(`P=${p2.toFixed(4)}MPa 行：T=${corner21.originalTemp.toFixed(2)}°C 低于饱和温度 ${corner21.temp.toFixed(2)}°C，已替换为饱和蒸汽焓`);
+            }
+        }
+
+        // ---- 3.4 显示插值网格 ----
+        details += '<p>插值网格：</p>';
+
+        // 构建角点显示单元格（每个单元格显示自己的实际温度）
+        const formatCornerCell = (corner) => {
+            const tempStr = corner.temp.toFixed(2);
+            const enthalpyStr = corner.enthalpy ? corner.enthalpy.toFixed(2) : 'N/A';
+            let phaseLabel = '';
+            let phaseColor = '';
+            let methodLabel = '';
+            if (corner.isSaturated) {
+                phaseLabel = '饱和';
+                phaseColor = '#e67e22';
+                methodLabel = '<span style="color:#e67e22;font-size:0.8em;">(饱和蒸汽焓)</span>';
+            } else if (corner.isInterpolated) {
+                phaseLabel = '过热';
+                phaseColor = '#2980b9';
+                methodLabel = '<span style="color:#27ae60;font-size:0.8em;">(插值计算)</span>';
+            } else {
+                phaseLabel = '过热';
+                phaseColor = '#2980b9';
+                methodLabel = '<span style="color:#888;font-size:0.8em;">(查表)</span>';
+            }
+            return {
+                tempStr: tempStr,
+                cellHtml: `<div style="font-size:0.85em;color:#888;">T=${tempStr}°C</div><div>h=${enthalpyStr} kJ/kg</div><div style="color:${phaseColor};font-size:0.85em;">(${phaseLabel})</div>${methodLabel}`,
+                isInterpolated: corner.isInterpolated,
+                interpInfo: corner.interpInfo
+            };
+        };
+
+        const cell11 = formatCornerCell(corner11);
+        const cell12 = formatCornerCell(corner12);
+        const cell21 = formatCornerCell(corner21);
+        const cell22 = formatCornerCell(corner22);
+
+        // 构建表格 - 每个单元格显示实际温度
+        details += `<table class="interpolation-table">
+            <tr><th></th><th>下界</th><th>上界</th></tr>
+            <tr><td>P=${p1.toFixed(4)} MPa</td><td>${cell11.cellHtml}</td><td>${cell12.cellHtml}</td></tr>
+            <tr><td>P=${p2.toFixed(4)} MPa</td><td>${cell21.cellHtml}</td><td>${cell22.cellHtml}</td></tr>
+        </table>`;
+
+        // 如果有被修正的角点，添加说明
+        if (modifiedCorners.length > 0) {
+            details += `<p style="font-size:0.9em;color:#888;">※ ${modifiedCorners.join('；')}</p>`;
+        }
+
+        // 如果有需要插值的角点，显示插值过程
+        const interpolatedCorners = [];
+        if (cell11.isInterpolated) interpolatedCorners.push({ name: `P=${p1.toFixed(4)}MPa, T=${corner11.temp.toFixed(2)}°C`, info: corner11.interpInfo, enthalpy: corner11.enthalpy });
+        if (cell21.isInterpolated) interpolatedCorners.push({ name: `P=${p2.toFixed(4)}MPa, T=${corner21.temp.toFixed(2)}°C`, info: corner21.interpInfo, enthalpy: corner21.enthalpy });
+        
+        if (interpolatedCorners.length > 0) {
+            details += '<p style="color:#27ae60;font-size:0.9em;">角点插值计算过程：</p>';
+            interpolatedCorners.forEach(corner => {
+                const info = corner.info;
+                if (info) {
+                    details += `<p style="font-size:0.85em;">• ${corner.name}：</p>`;
+                    details += `<p style="font-size:0.85em;margin-left:20px;">先查过热蒸汽表：T=${info.t1}°C → h=${info.h1.toFixed(2)} kJ/kg，T=${info.t2}°C → h=${info.h2.toFixed(2)} kJ/kg</p>`;
+                    const targetTemp = parseFloat(corner.name.split('T=')[1]);
+                    details += `<p style="font-size:0.85em;margin-left:20px;">线性插值：h = ${info.h1.toFixed(2)} + (${info.h2.toFixed(2)} - ${info.h1.toFixed(2)}) × (${targetTemp.toFixed(2)} - ${info.t1}) / (${info.t2} - ${info.t1}) = ${corner.enthalpy.toFixed(2)} kJ/kg</p>`;
+                }
+            });
         }
 
         // ---- 3.5 执行双线性插值 ----
         details += '<p>双线性插值步骤：</p>';
         let h1, h2;
 
-        if (useGridPointDirect) {
+        // 为每个压力使用各自的温度区间进行插值
+        const t1_p1 = corner11.temp;  // P=p1 行的实际下界温度
+        const t2_p1 = corner12.temp;  // P=p1 行的上界温度
+        const t1_p2 = corner21.temp;  // P=p2 行的实际下界温度
+        const t2_p2 = corner22.temp;  // P=p2 行的上界温度
+
+        // 检查是否命中网格点（命中上界）
+        const isGridPointDirect = (temp === t2);
+
+        if (isGridPointDirect) {
             // 命中网格点：温度插值是常数，简化显示
             h1 = h12;  // 因为 h11 = h12，温度插值结果就是 h12
             h2 = h22;  // 同理
             
             details += `<p>1. 沿温度方向插值（P=${p1.toFixed(4)} MPa）：</p>`;
-            details += `<p>因 T=${temp.toFixed(2)}°C 正好命中网格点，h(${temp.toFixed(2)}) = h(T=${t2.toFixed(2)}) = <strong>${h1.toFixed(2)} kJ/kg</strong></p>`;
+            details += `<p>因 T=${temp.toFixed(2)}°C 正好命中网格点，h(${temp.toFixed(2)}) = h(T=${t2_p1.toFixed(2)}) = <strong>${h1.toFixed(2)} kJ/kg</strong></p>`;
 
             details += `<p>2. 沿温度方向插值（P=${p2.toFixed(4)} MPa）：</p>`;
-            details += `<p>因 T=${temp.toFixed(2)}°C 正好命中网格点，h(${temp.toFixed(2)}) = h(T=${t2.toFixed(2)}) = <strong>${h2.toFixed(2)} kJ/kg</strong></p>`;
+            details += `<p>因 T=${temp.toFixed(2)}°C 正好命中网格点，h(${temp.toFixed(2)}) = h(T=${t2_p2.toFixed(2)}) = <strong>${h2.toFixed(2)} kJ/kg</strong></p>`;
         } else {
             // 沿温度方向插值（压力 p1）
-            h1 = linearInterpolation(temp, t1, h11, t2, h12);
+            h1 = linearInterpolation(temp, t1_p1, h11, t2_p1, h12);
             details += `<p>1. 沿温度方向插值（P=${p1.toFixed(4)} MPa）：</p>`;
-            details += `<p>h(${temp.toFixed(2)}) = ${h11.toFixed(2)} + (${h12.toFixed(2)} - ${h11.toFixed(2)}) × (${temp.toFixed(2)} - ${t1.toFixed(2)}) / (${t2.toFixed(2)} - ${t1.toFixed(2)}) = ${h1.toFixed(2)} kJ/kg</p>`;
+            if (t1_p1 !== t1) {
+                details += `<p>注：P=${p1.toFixed(4)} MPa 行下界温度已从 ${t1.toFixed(2)}°C 修正为 ${t1_p1.toFixed(2)}°C（饱和温度）</p>`;
+            }
+            details += `<p>h(${temp.toFixed(2)}) = ${h11.toFixed(2)} + (${h12.toFixed(2)} - ${h11.toFixed(2)}) × (${temp.toFixed(2)} - ${t1_p1.toFixed(2)}) / (${t2_p1.toFixed(2)} - ${t1_p1.toFixed(2)}) = ${h1.toFixed(2)} kJ/kg</p>`;
 
             // 沿温度方向插值（压力 p2）
-            h2 = linearInterpolation(temp, t1, h21, t2, h22);
+            h2 = linearInterpolation(temp, t1_p2, h21, t2_p2, h22);
             details += `<p>2. 沿温度方向插值（P=${p2.toFixed(4)} MPa）：</p>`;
-            details += `<p>h(${temp.toFixed(2)}) = ${h21.toFixed(2)} + (${h22.toFixed(2)} - ${h21.toFixed(2)}) × (${temp.toFixed(2)} - ${t1.toFixed(2)}) / (${t2.toFixed(2)} - ${t1.toFixed(2)}) = ${h2.toFixed(2)} kJ/kg</p>`;
+            if (t1_p2 !== t1) {
+                details += `<p>注：P=${p2.toFixed(4)} MPa 行下界温度已从 ${t1.toFixed(2)}°C 修正为 ${t1_p2.toFixed(2)}°C（饱和温度）</p>`;
+            }
+            details += `<p>h(${temp.toFixed(2)}) = ${h21.toFixed(2)} + (${h22.toFixed(2)} - ${h21.toFixed(2)}) × (${temp.toFixed(2)} - ${t1_p2.toFixed(2)}) / (${t2_p2.toFixed(2)} - ${t1_p2.toFixed(2)}) = ${h2.toFixed(2)} kJ/kg</p>`;
         }
 
         // 沿压力方向插值
@@ -7626,6 +7564,12 @@ function getEnthalpyValue(data, pressure, temperature) {
             }
         }
     }
+    // 精确查找失败，尝试使用插值
+    const temperatures = Object.keys(data[pressureKey] || data[Object.keys(data)[0]]).map(Number).sort((a, b) => a - b);
+    const interpolated = getInterpolatedEnthalpy(data, temperatures, pressure, temperature);
+    if (interpolated) {
+        return interpolated.enthalpy;
+    }
     return null;
 }
 
@@ -7639,6 +7583,106 @@ function getDisplayEnthalpy(data, pressure, temperature, saturationTemp) {
     
     const satEnthalpy = getSaturatedSteamEnthalpy(pressure);
     return { value: satEnthalpy, label: '饱和', isLiquid: true, isInterpolated: false };
+}
+
+/**
+ * 获取角点的焓值（计算和显示通用）
+ * 如果角点温度低于该压力的饱和温度，用饱和温度和饱和蒸汽焓替换
+ * 如果角点温度等于或接近饱和温度，使用饱和蒸汽焓
+ * @param {object} data - 蒸汽表数据
+ * @param {number} pressure - 压力 (MPa)
+ * @param {number} gridTemp - 网格温度 (°C)
+ * @returns {object} - { temp, enthalpy, isSaturated, originalTemp, label, isInterpolated, interpInfo }
+ */
+function getCornerEnthalpy(data, pressure, gridTemp) {
+    const satTemp = getSaturationTempByPressure(pressure);
+    
+    // 如果温度接近饱和温度（在0.01°C范围内），视为饱和蒸汽
+    if (Math.abs(gridTemp - satTemp) < 0.01) {
+        const satEnthalpy = getSaturatedSteamEnthalpy(pressure);
+        return {
+            temp: satTemp,
+            enthalpy: satEnthalpy,
+            isSaturated: true,
+            originalTemp: gridTemp,
+            label: '饱和',
+            isInterpolated: false,
+            interpInfo: null
+        };
+    }
+    
+    // 如果温度低于饱和温度，用饱和蒸汽焓替换
+    if (gridTemp < satTemp) {
+        const satEnthalpy = getSaturatedSteamEnthalpy(pressure);
+        return {
+            temp: satTemp,
+            enthalpy: satEnthalpy,
+            isSaturated: true,
+            originalTemp: gridTemp,
+            label: '饱和',
+            isInterpolated: false,
+            interpInfo: null
+        };
+    }
+    
+    // 温度高于饱和温度，是过热蒸汽
+    // 尝试直接查表获取焓值
+    const pressureKey = pressure.toFixed(3);
+    let pData = data[pressureKey];
+    if (!pData) {
+        for (const key of Object.keys(data)) {
+            if (Math.abs(parseFloat(key) - pressure) < 0.001) {
+                pData = data[key];
+                break;
+            }
+        }
+    }
+    
+    // 检查是否为直接网格点
+    if (pData && pData[String(gridTemp)] !== undefined) {
+        return {
+            temp: gridTemp,
+            enthalpy: pData[String(gridTemp)],
+            isSaturated: false,
+            originalTemp: gridTemp,
+            label: '蒸汽',
+            isInterpolated: false,
+            interpInfo: null
+        };
+    }
+    
+    // 不是网格点，需要插值
+    const temperatures = Object.keys(pData).map(Number).sort((a, b) => a - b);
+    const interpResult = getInterpolatedEnthalpy(data, temperatures, pressure, gridTemp);
+    
+    if (interpResult) {
+        return {
+            temp: gridTemp,
+            enthalpy: interpResult.enthalpy,
+            isSaturated: false,
+            originalTemp: gridTemp,
+            label: '蒸汽',
+            isInterpolated: true,
+            interpInfo: {
+                t1: interpResult.t1,
+                t2: interpResult.t2,
+                h1: interpResult.h1,
+                h2: interpResult.h2
+            }
+        };
+    }
+    
+    // 回退方案：使用getEnthalpyValue（含插值）
+    const enthalpy = getEnthalpyValue(data, pressure, gridTemp);
+    return {
+        temp: gridTemp,
+        enthalpy: enthalpy,
+        isSaturated: false,
+        originalTemp: gridTemp,
+        label: '蒸汽',
+        isInterpolated: false,
+        interpInfo: null
+    };
 }
 
 function getInterpolatedEnthalpy(data, temperatures, pressure, temperature) {
@@ -7831,7 +7875,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return { valid: false, message: '请输入有效的温度（0~800°C）' };
             }
             const saturationTemp = getSaturationTempByPressure(pressure);
-            if (saturationTemp !== null && temp < saturationTemp) {
+            if (saturationTemp !== null && temp < saturationTemp - 0.01) {
                 return { valid: false, message: `温度 ${temp.toFixed(2)}°C 低于当前压力下的饱和温度 ${saturationTemp.toFixed(2)}°C` };
             }
         }
