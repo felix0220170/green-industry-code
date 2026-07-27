@@ -7390,12 +7390,13 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
             h21 = h22;
 
             // 显示：下界用插值/饱和蒸汽值（因 t1 不是网格点）
-            display_h11 = getInterpolatedEnthalpy(data, temperatures, p1, t1);
+            const interpResult = getInterpolatedEnthalpy(data, temperatures, p1, t1);
+            display_h11 = interpResult ? interpResult.enthalpy : null;
             display_h12 = h12;
             display_h21 = getSaturatedSteamEnthalpy(p2);
             display_h22 = h22;
             
-            display_info11 = { value: display_h11, label: '过热', isLiquid: false, isInterpolated: true };
+            display_info11 = { value: display_h11, label: '过热', isLiquid: false, isInterpolated: true, interpInfo: interpResult };
             display_info12 = { value: h12, label: '蒸汽', isLiquid: false, isInterpolated: false };
             display_info21 = { value: display_h21, label: '饱和', isLiquid: true, isInterpolated: false };
             display_info22 = { value: h22, label: '蒸汽', isLiquid: false, isInterpolated: false };
@@ -7452,35 +7453,39 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
             h21 = h_sat_p2;
 
             // P=p1: 尝试从过热蒸汽表插值获取（因 p1 < p2，在饱和温度时蒸汽已过热）
-            h11 = getInterpolatedEnthalpy(data, temperatures, p1, t1);
-            if (h11 === null) {
+            const interpResult2 = getInterpolatedEnthalpy(data, temperatures, p1, t1);
+            let h11_value, interpInfo = null;
+            if (interpResult2 === null) {
                 // 若过热蒸汽表无数据，回退到 p1 压力的饱和蒸汽焓
                 const h_sat_p1 = getSaturatedSteamEnthalpy(p1);
                 if (h_sat_p1 === null) {
                     details += '<p class="error">❌ 无法获取 P₁ 压力的焓值</p>';
                     return null;
                 }
-                h11 = h_sat_p1;
-                details += `<p>P=${p1.toFixed(4)} MPa, T=${t1.toFixed(2)}°C 过热蒸汽表无数据，回退使用饱和蒸汽焓：h = ${h11.toFixed(2)} kJ/kg</p>`;
+                h11_value = h_sat_p1;
+                details += `<p>P=${p1.toFixed(4)} MPa, T=${t1.toFixed(2)}°C 过热蒸汽表无数据，回退使用饱和蒸汽焓：h = ${h11_value.toFixed(2)} kJ/kg</p>`;
             } else {
-                details += `<p>P=${p1.toFixed(4)} MPa, T=${t1.toFixed(2)}°C 从过热蒸汽表插值：h = ${h11.toFixed(2)} kJ/kg</p>`;
-                // 显示插值过程
-                const satTempP1 = getSaturationTempByPressure(p1);
-                details += `<p style="font-size:0.9em;color:#666;">插值过程：在 P=${p1.toFixed(4)} MPa 下，温度 ${t1.toFixed(2)}°C 介于 ${satTempP1.toFixed(2)}°C（饱和）和 ${t2.toFixed(2)}°C 之间，从过热蒸汽表线性插值得到</p>`;
+                h11_value = interpResult2.enthalpy;
+                interpInfo = interpResult2;
+                details += `<p>P=${p1.toFixed(4)} MPa, T=${t1.toFixed(2)}°C 从过热蒸汽表插值：h = ${h11_value.toFixed(2)} kJ/kg</p>`;
+                // 显示真实的温度网格点插值过程
+                details += `<p style="font-size:0.9em;color:#666;">插值过程：在 P=${p1.toFixed(4)} MPa 下，温度 ${t1.toFixed(2)}°C 介于温度网格点 ${interpInfo.t1.toFixed(2)}°C 和 ${interpInfo.t2.toFixed(2)}°C 之间，线性插值得到</p>`;
+                details += `<p style="font-size:0.9em;color:#888;">h(${t1.toFixed(2)}) = ${interpInfo.h1.toFixed(2)} + (${interpInfo.h2.toFixed(2)} - ${interpInfo.h1.toFixed(2)}) × (${t1.toFixed(2)} - ${interpInfo.t1.toFixed(2)}) / (${interpInfo.t2.toFixed(2)} - ${interpInfo.t1.toFixed(2)}) = ${h11_value.toFixed(2)} kJ/kg</p>`;
             }
+            h11 = h11_value;
 
-            details += `<p>下界 T=${t1.toFixed(2)}°C：P=${p1.toFixed(4)} MPa → h=${h11.toFixed(2)} kJ/kg（过热），P=${p2.toFixed(4)} MPa → h=${h21.toFixed(2)} kJ/kg（饱和）</p>`;
+            details += `<p>下界 T=${t1.toFixed(2)}°C：P=${p1.toFixed(4)} MPa → h=${h11_value.toFixed(2)} kJ/kg（过热），P=${p2.toFixed(4)} MPa → h=${h21.toFixed(2)} kJ/kg（饱和）</p>`;
 
             // 上界从过热蒸汽表获取（t2 是原温度网格点，必须存在）
             h12 = getEnthalpyValue(data, p1, t2);
             h22 = getEnthalpyValue(data, p2, t2);
 
             // 设置显示信息
-            display_info11 = { value: h11, label: '过热', isLiquid: false, isInterpolated: true };
+            display_info11 = { value: h11_value, label: '过热', isLiquid: false, isInterpolated: true, interpInfo: interpInfo };
             display_info12 = { value: h12, label: '蒸汽', isLiquid: false, isInterpolated: false };
             display_info21 = { value: h21, label: '饱和', isLiquid: true, isInterpolated: false };
             display_info22 = { value: h22, label: '蒸汽', isLiquid: false, isInterpolated: false };
-            display_h11 = h11;
+            display_h11 = h11_value;
             display_h12 = h12;
             display_h21 = h21;
             display_h22 = h22;
@@ -7640,7 +7645,7 @@ function getInterpolatedEnthalpy(data, temperatures, pressure, temperature) {
 
     const tableData = data[pKey];
     if (tableData[temperature] !== undefined) {
-        return tableData[temperature];
+        return { enthalpy: tableData[temperature], t1: temperature, t2: temperature, h1: tableData[temperature], h2: tableData[temperature] };
     }
 
     for (let i = 0; i < temperatures.length - 1; i++) {
@@ -7650,7 +7655,8 @@ function getInterpolatedEnthalpy(data, temperatures, pressure, temperature) {
             const h1 = tableData[String(t1)];
             const h2 = tableData[String(t2)];
             if (h1 !== undefined && h2 !== undefined) {
-                return linearInterpolation(temperature, t1, h1, t2, h2);
+                const result = linearInterpolation(temperature, t1, h1, t2, h2);
+                return { enthalpy: result, t1: t1, t2: t2, h1: h1, h2: h2 };
             }
             return null;
         }
