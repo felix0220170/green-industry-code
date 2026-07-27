@@ -7402,6 +7402,16 @@ function calculateSuperheatedSteam(ton, pressure, temp) {
             display_info22 = { value: h22, label: '蒸汽', isLiquid: false, isInterpolated: false };
 
             details += `<p>命中网格点 T=${t2.toFixed(2)}°C，下界跨越饱和温度，使用饱和温度 ${t1.toFixed(2)}°C 作为显示下界</p>`;
+
+            // 显示插值过程（如果 P=p1, T=t1 需要插值）
+            if (interpResult && interpResult.t1 !== interpResult.t2) {
+                details += `<p>P=${p1.toFixed(4)} MPa, T=${t1.toFixed(2)}°C 从过热蒸汽表插值：h = ${interpResult.enthalpy.toFixed(2)} kJ/kg</p>`;
+                details += `<p style="font-size:0.9em;color:#666;">插值过程：在 P=${p1.toFixed(4)} MPa 下，温度 ${t1.toFixed(2)}°C 介于温度网格点 ${interpResult.t1.toFixed(2)}°C 和 ${interpResult.t2.toFixed(2)}°C 之间，线性插值得到</p>`;
+                details += `<p style="font-size:0.9em;color:#888;">h(${t1.toFixed(2)}) = ${interpResult.h1.toFixed(2)} + (${interpResult.h2.toFixed(2)} - ${interpResult.h1.toFixed(2)}) × (${t1.toFixed(2)} - ${interpResult.t1.toFixed(2)}) / (${interpResult.t2.toFixed(2)} - ${interpResult.t1.toFixed(2)}) = ${interpResult.enthalpy.toFixed(2)} kJ/kg</p>`;
+            } else if (interpResult) {
+                // 命中网格点，直接使用表中数据
+                details += `<p>P=${p1.toFixed(4)} MPa, T=${t1.toFixed(2)}°C 过热蒸汽表直接查得：h = ${interpResult.enthalpy.toFixed(2)} kJ/kg</p>`;
+            }
         } else if (useGridPointDirect) {
             // 命中网格点：获取网格点焓值用于计算
             h12 = getEnthalpyValue(data, p1, t2);
