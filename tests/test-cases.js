@@ -1,5 +1,5 @@
 // 整合测试用例 - 热力购入量计算器
-// 包含基础功能、修正逻辑、角点验证等所有测试场景
+// 适配简化后的代码：标准双线性插值，无修正逻辑，数据已清洗
 
 const testCases = {
   // ========== 一、热水专项测试（8个用例） ==========
@@ -8,9 +8,9 @@ const testCases = {
       id: 'HW-001',
       name: '热水 - 0°C（基准温度边界）',
       input: { mediumType: 'hot_water', weight: 1, temp: 0, pressure: null },
-      expected: { 
-        success: true, 
-        minGJ: -0.10, 
+      expected: {
+        success: true,
+        minGJ: -0.10,
         maxGJ: 0.01,
         description: '0°C时焓值低于基准温度(20°C)，GJ为负值'
       }
@@ -19,9 +19,9 @@ const testCases = {
       id: 'HW-002',
       name: '热水 - 20°C（基准温度，GJ应为0）',
       input: { mediumType: 'hot_water', weight: 1, temp: 20, pressure: null },
-      expected: { 
-        success: true, 
-        minGJ: -0.01, 
+      expected: {
+        success: true,
+        minGJ: -0.01,
         maxGJ: 0.01,
         description: '20°C等于基准温度，焓差为0，GJ应为0'
       }
@@ -30,9 +30,9 @@ const testCases = {
       id: 'HW-003',
       name: '热水 - 90°C（工业常见温度）',
       input: { mediumType: 'hot_water', weight: 1, temp: 90, pressure: null },
-      expected: { 
-        success: true, 
-        minGJ: 0.28, 
+      expected: {
+        success: true,
+        minGJ: 0.28,
         maxGJ: 0.31,
         description: '90°C时GJ≈0.293'
       }
@@ -41,9 +41,9 @@ const testCases = {
       id: 'HW-004',
       name: '热水 - 100°C（沸点）',
       input: { mediumType: 'hot_water', weight: 1, temp: 100, pressure: null },
-      expected: { 
-        success: true, 
-        minGJ: 0.33, 
+      expected: {
+        success: true,
+        minGJ: 0.33,
         maxGJ: 0.36,
         description: '100°C时GJ≈0.335'
       }
@@ -52,9 +52,9 @@ const testCases = {
       id: 'HW-005',
       name: '热水 - 150°C（高温）',
       input: { mediumType: 'hot_water', weight: 1, temp: 150, pressure: null },
-      expected: { 
-        success: true, 
-        minGJ: 0.54, 
+      expected: {
+        success: true,
+        minGJ: 0.54,
         maxGJ: 0.56,
         description: '150°C时GJ≈0.548'
       }
@@ -63,8 +63,8 @@ const testCases = {
       id: 'HW-006',
       name: '热水 - 10吨, 90°C（重量线性验证）',
       input: { mediumType: 'hot_water', weight: 10, temp: 90, pressure: null },
-      expected: { 
-        success: true, 
+      expected: {
+        success: true,
         exactGJ: 2.93050,
         tolerance: 0.02,
         description: '10吨时GJ应为1吨的10倍'
@@ -90,9 +90,9 @@ const testCases = {
       id: 'SS-001',
       name: '饱和蒸汽 - 0.1 MPa（低压）',
       input: { mediumType: 'saturated_steam', weight: 1, temp: null, pressure: 0.1 },
-      expected: { 
-        success: true, 
-        minGJ: 2.57, 
+      expected: {
+        success: true,
+        minGJ: 2.57,
         maxGJ: 2.61,
         description: '0.1MPa时GJ≈2.591'
       }
@@ -101,9 +101,9 @@ const testCases = {
       id: 'SS-002',
       name: '饱和蒸汽 - 1 MPa（中压）',
       input: { mediumType: 'saturated_steam', weight: 1, temp: null, pressure: 1 },
-      expected: { 
-        success: true, 
-        minGJ: 2.67, 
+      expected: {
+        success: true,
+        minGJ: 2.67,
         maxGJ: 2.71,
         description: '1MPa时GJ≈2.693'
       }
@@ -112,9 +112,9 @@ const testCases = {
       id: 'SS-003',
       name: '饱和蒸汽 - 3 MPa（峰值附近）',
       input: { mediumType: 'saturated_steam', weight: 1, temp: null, pressure: 3 },
-      expected: { 
-        success: true, 
-        minGJ: 2.70, 
+      expected: {
+        success: true,
+        minGJ: 2.70,
         maxGJ: 2.74,
         description: '3MPa时GJ≈2.719，位于焓值峰值附近'
       }
@@ -123,9 +123,9 @@ const testCases = {
       id: 'SS-004',
       name: '饱和蒸汽 - 10 MPa（高压）',
       input: { mediumType: 'saturated_steam', weight: 1, temp: null, pressure: 10 },
-      expected: { 
-        success: true, 
-        minGJ: 2.62, 
+      expected: {
+        success: true,
+        minGJ: 2.62,
         maxGJ: 2.66,
         description: '10MPa时GJ≈2.642'
       }
@@ -134,9 +134,9 @@ const testCases = {
       id: 'SS-005',
       name: '饱和蒸汽 - 5.5 MPa（非网格点，验证插值）',
       input: { mediumType: 'saturated_steam', weight: 1, temp: null, pressure: 5.5 },
-      expected: { 
-        success: true, 
-        minGJ: 2.70, 
+      expected: {
+        success: true,
+        minGJ: 2.70,
         maxGJ: 2.72,
         description: '5.5MPa位于5-6MPa之间，线性插值'
       }
@@ -145,8 +145,8 @@ const testCases = {
       id: 'SS-006',
       name: '饱和蒸汽 - 10吨, 1 MPa（重量线性验证）',
       input: { mediumType: 'saturated_steam', weight: 10, temp: null, pressure: 1 },
-      expected: { 
-        success: true, 
+      expected: {
+        success: true,
         exactGJ: 26.932,
         tolerance: 0.02,
         description: '10吨时GJ应为1吨的10倍'
@@ -200,184 +200,63 @@ const testCases = {
     }
   ],
 
-  // ========== 四、修正逻辑验证（5个用例） ==========
-  // 验证：当温度接近饱和温度时，使用饱和温度作为下界
-  correction_logic: [
-    {
-      id: 'COR-001',
-      name: '修正逻辑 - 0.5MPa, 155°C（刚过饱和温度151.83°C）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 155, pressure: 0.5 },
-      expected: { 
-        success: true, 
-        minGJ: 2.57, 
-        maxGJ: 2.77,
-        expectedInterval: { t1: 151.8, t2: 160, description: '使用饱和温度作为下界' }
-      }
-    },
-    {
-      id: 'COR-002',
-      name: '修正逻辑 - 2MPa, 215°C（刚过饱和温度212.38°C）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 215, pressure: 2 },
-      expected: { 
-        success: true, 
-        minGJ: 2.62, 
-        maxGJ: 2.82,
-        expectedInterval: { t1: 212.4, t2: 220, description: '使用饱和温度作为下界' }
-      }
-    },
-    {
-      id: 'COR-003',
-      name: '修正逻辑 - 5MPa, 265°C（刚过饱和温度263.94°C）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 265, pressure: 5 },
-      expected: { 
-        success: true, 
-        minGJ: 2.61, 
-        maxGJ: 2.81,
-        expectedInterval: { t1: 263.9, t2: 270, description: '使用饱和温度作为下界' }
-      }
-    },
-    {
-      id: 'COR-004',
-      name: '修正逻辑 - 15MPa, 345°C（刚过饱和温度342.16°C）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 345, pressure: 15 },
-      expected: { 
-        success: true, 
-        minGJ: 2.46, 
-        maxGJ: 2.66,
-        expectedInterval: { t1: 342.1, t2: 350, description: '使用饱和温度作为下界' }
-      }
-    },
-    {
-      id: 'COR-005',
-      name: '修正逻辑 - 20MPa, 368°C（刚过饱和温度365.74°C）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 368, pressure: 20 },
-      expected: { 
-        success: true, 
-        minGJ: 2.29, 
-        maxGJ: 2.49,
-        expectedInterval: { t1: 365.7, t2: 370, description: '使用饱和温度作为下界' }
-      }
-    }
-  ],
-
-  // ========== 五、边界组合测试（4个用例） ==========
-  // 覆盖 P/T 在或不在网格点的各种组合
+  // ========== 四、边界组合测试（4个用例） ==========
+  // 覆盖 P/T 在或不在网格点的各种组合（适配新增压力点）
   boundary_combinations: [
     {
       id: 'BOUND-001',
-      name: '边界组合 - P=0.5, T=159（压力在网格点，温度不在）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 159, pressure: 0.5 },
-      expected: { 
-        success: true, 
-        minGJ: 2.58, 
-        maxGJ: 2.78,
-        expectedInterval: { t1: 151.8, t2: 160, description: '使用较高饱和温度作为统一下界' }
+      name: '边界组合 - P=1.0(网格点), T=205(非网格点)',
+      input: { mediumType: 'superheated_steam', weight: 1, temp: 205, pressure: 1.0 },
+      expected: {
+        success: true,
+        minGJ: 2.65,
+        maxGJ: 2.85,
+        description: '压力命中网格点，温度不在网格点'
       }
     },
     {
       id: 'BOUND-002',
-      name: '边界组合 - P=0.5, T=160（压力和温度都在网格点）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 160, pressure: 0.5 },
-      expected: { 
-        success: true, 
-        minGJ: 2.58, 
-        maxGJ: 2.78,
-        expectedInterval: { t1: 151.8, t2: 160, description: '使用较高饱和温度作为统一下界' }
+      name: '边界组合 - P=1.0(网格点), T=200(网格点)',
+      input: { mediumType: 'superheated_steam', weight: 1, temp: 200, pressure: 1.0 },
+      expected: {
+        success: true,
+        minGJ: 2.64,
+        maxGJ: 2.84,
+        description: '压力和温度都命中网格点'
       }
     },
     {
       id: 'BOUND-003',
-      name: '边界组合 - P=0.4, T=159（压力和温度都不在网格点，使用统一饱和温度下界）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 159, pressure: 0.4 },
-      expected: { 
-        success: true, 
-        minGJ: 2.59, 
-        maxGJ: 2.79,
-        expectedInterval: { t1: 151.8, t2: 160, description: '使用较高饱和温度作为统一下界' }
+      name: '边界组合 - P=0.55(非网格点), T=205(非网格点)',
+      input: { mediumType: 'superheated_steam', weight: 1, temp: 205, pressure: 0.55 },
+      expected: {
+        success: true,
+        minGJ: 2.68,
+        maxGJ: 2.88,
+        description: '压力和温度都不在网格点'
       }
     },
     {
       id: 'BOUND-004',
-      name: '边界组合 - P=0.4, T=160（压力不在网格点，温度在网格点，使用统一饱和温度下界）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 160, pressure: 0.4 },
-      expected: { 
-        success: true, 
-        minGJ: 2.59, 
-        maxGJ: 2.79,
-        expectedInterval: { t1: 151.8, t2: 160, description: '使用较高饱和温度作为统一下界' }
+      name: '边界组合 - P=0.55(非网格点), T=200(网格点)',
+      input: { mediumType: 'superheated_steam', weight: 1, temp: 200, pressure: 0.55 },
+      expected: {
+        success: true,
+        minGJ: 2.67,
+        maxGJ: 2.87,
+        description: '压力不在网格点，温度在网格点'
       }
     }
   ],
 
-  // ========== 六、角点焓值验证（4个用例） ==========
-  // 验证：插值网格表格中不再出现过冷水焓值
-  corner_enthalpy: [
-    {
-      id: 'CORNER-001',
-      name: '角点验证 - P=0.4, T=159（验证角点焓值为过热/饱和蒸汽）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 159, pressure: 0.4 },
-      expected: { 
-        success: true, 
-        minGJ: 2.59, 
-        maxGJ: 2.79,
-        cornerCheck: {
-          noLiquidEnthalpy: true,
-          description: '所有角点焓值应为过热蒸汽或饱和蒸汽，不应为过冷水'
-        }
-      }
-    },
-    {
-      id: 'CORNER-002',
-      name: '角点验证 - P=0.4, T=160（验证角点焓值为过热/饱和蒸汽）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 160, pressure: 0.4 },
-      expected: { 
-        success: true, 
-        minGJ: 2.59, 
-        maxGJ: 2.79,
-        cornerCheck: {
-          noLiquidEnthalpy: true,
-          description: '所有角点焓值应为过热蒸汽或饱和蒸汽，不应为过冷水'
-        }
-      }
-    },
-    {
-      id: 'CORNER-003',
-      name: '角点验证 - P=0.5, T=159（验证角点焓值为过热/饱和蒸汽）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 159, pressure: 0.5 },
-      expected: { 
-        success: true, 
-        minGJ: 2.58, 
-        maxGJ: 2.78,
-        cornerCheck: {
-          noLiquidEnthalpy: true,
-          description: '所有角点焓值应为过热蒸汽或饱和蒸汽，不应为过冷水'
-        }
-      }
-    },
-    {
-      id: 'CORNER-004',
-      name: '角点验证 - P=0.5, T=160（验证角点焓值为过热/饱和蒸汽）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 160, pressure: 0.5 },
-      expected: { 
-        success: true, 
-        minGJ: 2.58, 
-        maxGJ: 2.78,
-        cornerCheck: {
-          noLiquidEnthalpy: true,
-          description: '所有角点焓值应为过热蒸汽或饱和蒸汽，不应为过冷水'
-        }
-      }
-    }
-  ],
-
-  // ========== 七、重量线性验证（3个用例） ==========
+  // ========== 五、重量线性验证（3个用例） ==========
   weight_linearity: [
     {
       id: 'WEIGHT-001',
       name: '重量线性 - 10MPa, 400°C, 2吨（应为1吨的2倍）',
       input: { mediumType: 'superheated_steam', weight: 2, temp: 400, pressure: 10 },
-      expected: { 
-        success: true, 
+      expected: {
+        success: true,
         exactGJ: 6.027,
         tolerance: 0.01,
         description: '2吨时GJ应为1吨的2倍'
@@ -387,8 +266,8 @@ const testCases = {
       id: 'WEIGHT-002',
       name: '重量线性 - 10MPa, 400°C, 0.5吨（应为1吨的0.5倍）',
       input: { mediumType: 'superheated_steam', weight: 0.5, temp: 400, pressure: 10 },
-      expected: { 
-        success: true, 
+      expected: {
+        success: true,
         exactGJ: 1.50675,
         tolerance: 0.01,
         description: '0.5吨时GJ应为1吨的0.5倍'
@@ -398,8 +277,8 @@ const testCases = {
       id: 'WEIGHT-003',
       name: '重量线性 - 10MPa, 400°C, 100吨（应为1吨的100倍）',
       input: { mediumType: 'superheated_steam', weight: 100, temp: 400, pressure: 10 },
-      expected: { 
-        success: true, 
+      expected: {
+        success: true,
         exactGJ: 301.35,
         tolerance: 0.02,
         description: '100吨时GJ应为1吨的100倍'
@@ -407,52 +286,62 @@ const testCases = {
     }
   ],
 
-  // ========== 八、显示逻辑验证（3个用例） ==========
-  // 验证：插值过程显示正确、饱和/过热标签正确
-  display_logic: [
+  // ========== 六、新增压力点验证（5个用例） ==========
+  // 验证新增的压力点（0.15, 0.25, 0.35, 0.4, 0.45, 0.6, 0.7, 0.8, 0.9, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 21）正常工作
+  new_pressure_points: [
     {
-      id: 'DISPLAY-001',
-      name: '显示验证 - P=0.4, T=159（验证插值过程显示）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 159, pressure: 0.4 },
-      expected: { 
-        success: true, 
-        minGJ: 2.59, 
-        maxGJ: 2.79,
-        displayCheck: {
-          hasInterpolationSteps: true,
-          hasSaturatedLabel: true,
-          description: '应显示插值步骤和饱和标签'
-        }
+      id: 'SH-NEW-01',
+      name: '新增压力点 - 0.25 MPa, 140°C',
+      input: { mediumType: 'superheated_steam', weight: 1, temp: 140, pressure: 0.25 },
+      expected: {
+        success: true,
+        minGJ: 2.56,
+        maxGJ: 2.76,
+        description: '0.25MPa为新压力点，饱和温度约127.4°C，140°C为过热蒸汽'
       }
     },
     {
-      id: 'DISPLAY-002',
-      name: '显示验证 - P=0.4, T=160（验证网格点命中显示）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 160, pressure: 0.4 },
-      expected: { 
-        success: true, 
-        minGJ: 2.59, 
-        maxGJ: 2.79,
-        displayCheck: {
-          hasInterpolationSteps: true,
-          hasSaturatedLabel: true,
-          description: '应显示插值步骤和饱和标签'
-        }
+      id: 'SH-NEW-02',
+      name: '新增压力点 - 0.35 MPa, 145°C',
+      input: { mediumType: 'superheated_steam', weight: 1, temp: 145, pressure: 0.35 },
+      expected: {
+        success: true,
+        minGJ: 2.56,
+        maxGJ: 2.76,
+        description: '0.35MPa为新压力点，饱和温度约138.9°C，145°C为过热蒸汽'
       }
     },
     {
-      id: 'DISPLAY-003',
-      name: '显示验证 - P=1.0, T=180（验证高压饱和温度显示）',
-      input: { mediumType: 'superheated_steam', weight: 1, temp: 180, pressure: 1.0 },
-      expected: { 
-        success: true, 
-        minGJ: 2.62, 
-        maxGJ: 2.82,
-        displayCheck: {
-          hasInterpolationSteps: true,
-          hasSaturatedLabel: true,
-          description: '应显示插值步骤和饱和标签，饱和温度约179.88°C'
-        }
+      id: 'SH-NEW-03',
+      name: '新增压力点 - 4.5 MPa, 300°C',
+      input: { mediumType: 'superheated_steam', weight: 1, temp: 300, pressure: 4.5 },
+      expected: {
+        success: true,
+        minGJ: 2.76,
+        maxGJ: 2.96,
+        description: '4.5MPa为新压力点，饱和温度约257.4°C，300°C为过热蒸汽'
+      }
+    },
+    {
+      id: 'SH-NEW-04',
+      name: '新增压力点 - 8.5 MPa, 350°C',
+      input: { mediumType: 'superheated_steam', weight: 1, temp: 350, pressure: 8.5 },
+      expected: {
+        success: true,
+        minGJ: 2.79,
+        maxGJ: 2.99,
+        description: '8.5MPa为新压力点，饱和温度约299.3°C，350°C为过热蒸汽'
+      }
+    },
+    {
+      id: 'SH-NEW-05',
+      name: '新增压力点 - 21 MPa, 400°C',
+      input: { mediumType: 'superheated_steam', weight: 1, temp: 400, pressure: 21 },
+      expected: {
+        success: true,
+        minGJ: 2.59,
+        maxGJ: 2.79,
+        description: '21MPa为新压力点，饱和温度约369.8°C，400°C为过热蒸汽'
       }
     }
   ]
